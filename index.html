@@ -2,66 +2,199 @@
 <html lang="sl">
 <head>
   <meta charset="UTF-8">
+  <title>Redovalnica</title>
   <style>
     table {
-      border-collapse: collapse;
       width: 100%;
-      font-family: Arial, sans-serif;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      border: 1px solid #aaa;
+      padding: 10px;
       text-align: center;
     }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 4px;
+
+    th img {
+      height: 20px;
     }
-    th {
-      background-color: #f6f6a8;
+
+    .pisna { color: red; font-weight: bold; }
+    .ustna { color: blue; font-weight: bold; }
+    .izdelek { color: purple; font-weight: bold; }
+
+    .ocena-box {
+      display: inline-block;
+      margin: 2px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      background: #f0f0f0;
     }
-    .red { color: red; }
-    .blue { color: blue; }
-    .legend {
-      margin-top: 10px;
-      font-size: 14px;
+
+    .dialog-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
     }
-    .legend img {
-      vertical-align: middle;
+
+    .dialog {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 300px;
+    }
+
+    .icon-btn {
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    .close-btn {
+      float: right;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-<table>
-  <tr>
-    <th>Predmet</th>
-    <th>A <br><img src="graja.png" height="16"></th>
-    <th>B <br><img src="ok.png" height="16"></th>
-    <th>C <br><img src="nok.png" height="16"></th>
-    <th>D <br><img src="graja.png" height="16"></th>
-    <th>Zaključena ocena</th>
-  </tr>
+<h2>Redovalnica</h2>
 
-  <tr><td>SLO Slovenščina</td><td><span class="red">4</span></td><td><span class="red">4</span></td><td><span class="red">2</span></td><td><span class="red">3 3</span></td><td></td></tr>
-  <tr><td>MAT Matematika</td><td><span class="red">5</span><span class="blue">2</span><span class="red">4</span></td><td><span class="red">2</span></td><td><span class="red">2</span></td><td></td><td>3</td></tr>
-  <tr><td>ANJ Angleščina</td><td><span class="red">4</span><span class="blue">1 2</span></td><td><span class="red">2</span><span class="blue">1 1 1 5</span><span class="blue">1 2</span></td><td style="background-color: #ccc;"></td><td></td><td>3</td></tr>
-  <tr><td>UME Umetnost</td><td><span class="blue">2 5 5</span></td><td><span class="red">5</span></td><td><span class="red">2</span></td><td></td><td></td></tr>
-  <tr><td>ZGO Zgodovina</td><td><span class="blue">1 2</span></td><td><span class="blue">1 2</span></td><td></td><td></td><td></td></tr>
-  <tr><td>GEO Geografija</td><td><span class="red">5</span></td><td><span class="blue">1 4 2</span></td><td></td><td></td><td>3</td></tr>
-  <tr><td>FIZ Fizika</td><td><span class="red">1</span><span class="blue">2</span></td><td><span class="red">2</span></td><td><span class="red">2</span></td><td></td><td>3</td></tr>
-  <tr><td>KEM Kemija</td><td><span class="blue">5</span><span class="red">2</span></td><td></td><td><span class="blue">5</span><span class="red">2</span></td><td><span class="red">3</span></td><td>3</td></tr>
-  <tr><td>ŠVZ Športna vzgoja</td><td><span class="red">4</span></td><td><img src="nok.png" height="16"></td><td style="background-color: #ccc;"></td><td></td><td></td></tr>
-  <tr><td>GOB Grafično oblikovanje</td><td><span class="blue">4</span></td><td><span class="blue">3</span></td><td><span class="blue">3</span></td><td></td><td>3</td></tr>
-  <tr><td>GMP Grafični in medijski procesi</td><td><span class="red">3</span></td><td></td><td><span class="red">5</span></td><td></td><td>3</td></tr>
-  <tr><td>IKT Informacijsko komunikacijska tehnologija</td><td><span class="blue">5</span></td><td></td><td><span class="blue">5</span></td><td></td><td>5</td></tr>
-  <tr><td>IND Interesne dejavnosti</td><td></td><td></td><td></td><td></td><td></td></tr>
-  <tr><td>IPM Izbrana poglavja matematike</td><td><span class="red">1 1</span></td><td></td><td></td><td></td><td></td></tr>
-  <tr><td>NEJ Nemščina</td><td><span class="red">2</span></td><td><span class="red">2 3</span></td><td style="background-color: #ccc;"></td><td></td><td>2</td></tr>
+<table id="redovalnica">
+  <thead>
+    <tr>
+      <th>Predmet</th>
+      <th>A</th>
+      <th><img src="graja.png" alt="XK"></th>
+      <th>B</th>
+      <th><img src="graja.png" alt="XK"></th>
+      <th>Konec</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Matematika</td>
+      <td class="editable ocenaste"></td>
+      <td class="editable xk"></td>
+      <td class="editable ocenaste"></td>
+      <td class="editable xk"></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Slovenščina</td>
+      <td class="editable ocenaste"></td>
+      <td class="editable xk"></td>
+      <td class="editable ocenaste"></td>
+      <td class="editable xk"></td>
+      <td></td>
+    </tr>
+  </tbody>
 </table>
 
-<div class="legend">
-  <p><img src="nok.png" height="16"> ni opravil vseh obveznosti sklopa pozitivno</p>
-  <p><img src="ok.png" height="16"> naknadno opravil vse obveznosti sklopa pozitivno</p>
-  <p><img src="graja.png" height="16"> delno opravil vse obveznosti sklopa pozitivno</p>
-  <p><span class="red">rdeče</span> = pisno, <span class="blue">modro</span> = izdelek, navadno = ustno</p>
-</div>
+<!-- Dialogi -->
+<div id="dialog-container" style="display:none"></div>
+
+<script>
+  const dialogContainer = document.getElementById('dialog-container');
+
+  function closeDialog() {
+    dialogContainer.style.display = 'none';
+    dialogContainer.innerHTML = '';
+  }
+
+  function openOcenaDialog(cell) {
+    dialogContainer.style.display = 'flex';
+    dialogContainer.innerHTML = `
+      <div class="dialog-overlay" onclick="closeDialog()">
+        <div class="dialog" onclick="event.stopPropagation()">
+          <span class="close-btn" onclick="closeDialog()">✖</span>
+          <h3>Upravljanje ocen</h3>
+          <button onclick="showVnosForm('${cell.dataset.row}', '${cell.dataset.col}')">VPIŠI OCENO</button>
+          <button onclick="urediObstojece('${cell.dataset.row}', '${cell.dataset.col}')">UREDI OCENO</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function showVnosForm(row, col) {
+    dialogContainer.innerHTML = `
+      <div class="dialog-overlay" onclick="closeDialog()">
+        <div class="dialog" onclick="event.stopPropagation()">
+          <span class="close-btn" onclick="closeDialog()">✖</span>
+          <h3>Vpiši oceno</h3>
+          <div>
+            <label><input type="radio" name="tip" value="pisna"> <span class="pisna">PISNA OCENA</span></label><br>
+            <label><input type="radio" name="tip" value="ustna"> <span class="ustna">USTNA OCENA</span></label><br>
+            <label><input type="radio" name="tip" value="izdelek"> <span class="izdelek">IZDELEK</span></label>
+          </div>
+          <div>
+            <label>Pridobljena ocena: <input type="text" id="vnos-ocena"></label>
+          </div>
+          <div>
+            <label>Opombe: <textarea id="vnos-opombe"></textarea></label>
+          </div>
+          <button onclick="shraniOceno(${row}, ${col})">Shrani</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function shraniOceno(row, col) {
+    const tip = document.querySelector('input[name="tip"]:checked')?.value;
+    const vrednost = document.getElementById('vnos-ocena').value;
+    if (!tip || !vrednost) return alert('Izpolni vse podatke!');
+    const barve = { pisna: 'pisna', ustna: 'ustna', izdelek: 'izdelek' };
+
+    const td = document.querySelectorAll('#redovalnica tbody tr')[row].children[col];
+    const span = document.createElement('span');
+    span.className = `ocena-box ${barve[tip]}`;
+    span.innerText = vrednost;
+    td.appendChild(span);
+    closeDialog();
+  }
+
+  function openXKDialog(cell) {
+    dialogContainer.style.display = 'flex';
+    dialogContainer.innerHTML = `
+      <div class="dialog-overlay" onclick="closeDialog()">
+        <div class="dialog" onclick="event.stopPropagation()">
+          <span class="close-btn" onclick="closeDialog()">✖</span>
+          <h3>Izberi možnost</h3>
+          <img src="nok.png" alt="X" class="icon-btn" onclick="setXK('${cell.dataset.row}', '${cell.dataset.col}', 'nok.png')">
+          <img src="ok.png" alt="K" class="icon-btn" onclick="setXK('${cell.dataset.row}', '${cell.dataset.col}', 'ok.png')">
+        </div>
+      </div>
+    `;
+  }
+
+  function setXK(row, col, imageName) {
+    const td = document.querySelectorAll('#redovalnica tbody tr')[row].children[col];
+    td.innerHTML = `<img src="${imageName}" height="20">`;
+    closeDialog();
+  }
+
+  // Dodajamo dogodke
+  document.querySelectorAll('#redovalnica tbody tr').forEach((tr, rowIndex) => {
+    tr.querySelectorAll('td').forEach((td, colIndex) => {
+      if (td.classList.contains('editable')) {
+        td.dataset.row = rowIndex;
+        td.dataset.col = colIndex;
+
+        td.addEventListener('click', () => {
+          if (td.classList.contains('ocenaste')) {
+            openOcenaDialog(td);
+          } else if (td.classList.contains('xk')) {
+            openXKDialog(td);
+          }
+        });
+      }
+    });
+  });
+</script>
 
 </body>
 </html>
