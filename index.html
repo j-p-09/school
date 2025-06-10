@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px;
+    }
+    th {
+      background-color: #f6f6a8;
+    }
+    .red { color: red; }
+    .blue { color: blue; }
+    .legend {
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .legend img {
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<table>
+  <tr>
+    <th>Predmet</th>
+    <th>A <br><img src="graja.png" height="16"></th>
+    <th>B <br><img src="ok.png" height="16"></th>
+    <th>C <br><img src="nok.png" height="16"></th>
+    <th>D <br><img src="graja.png" height="16"></th>
+    <th>Zaključena ocena</th>
+  </tr>
+
+  <tr><td>SLO Slovenščina</td><td><span class="red">4</span></td><td><span class="red">4</span></td><td><span class="red">2</span></td><td><span class="red">3 3</span></td><td></td></tr>
+  <tr><td>MAT Matematika</td><td><span class="red">5</span><span class="blue">2</span><span class="red">4</span></td><td><span class="red">2</span></td><td><span class="red">2</span></td><td></td><td>3</td></tr>
+  <tr><td>ANJ Angleščina</td><td><span class="red">4</span><span class="blue">1 2</span></td><td><span class="red">2</span><span class="blue">1 1 1 5</span><span class="blue">1 2</span></td><td style="background-color: #ccc;"></td><td></td><td>3</td></tr>
+  <tr><td>UME Umetnost</td><td><span class="blue">2 5 5</span></td><td><span class="red">5</span></td><td><span class="red">2</span></td><td></td><td></td></tr>
+  <tr><td>ZGO Zgodovina</td><td><span class="blue">1 2</span></td><td><span class="blue">1 2</span></td><td></td><td></td><td></td></tr>
+  <tr><td>GEO Geografija</td><td><span class="red">5</span></td><td><span class="blue">1 4 2</span></td><td></td><td></td><td>3</td></tr>
+  <tr><td>FIZ Fizika</td><td><span class="red">1</span><span class="blue">2</span></td><td><span class="red">2</span></td><td><span class="red">2</span></td><td></td><td>3</td></tr>
+  <tr><td>KEM Kemija</td><td><span class="blue">5</span><span class="red">2</span></td><td></td><td><span class="blue">5</span><span class="red">2</span></td><td><span class="red">3</span></td><td>3</td></tr>
+  <tr><td>ŠVZ Športna vzgoja</td><td><span class="red">4</span></td><td><img src="nok.png" height="16"></td><td style="background-color: #ccc;"></td><td></td><td></td></tr>
+  <tr><td>GOB Grafično oblikovanje</td><td><span class="blue">4</span></td><td><span class="blue">3</span></td><td><span class="blue">3</span></td><td></td><td>3</td></tr>
+  <tr><td>GMP Grafični in medijski procesi</td><td><span class="red">3</span></td><td></td><td><span class="red">5</span></td><td></td><td>3</td></tr>
+  <tr><td>IKT Informacijsko komunikacijska tehnologija</td><td><span class="blue">5</span></td><td></td><td><span class="blue">5</span></td><td></td><td>5</td></tr>
+  <tr><td>IND Interesne dejavnosti</td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>IPM Izbrana poglavja matematike</td><td><span class="red">1 1</span></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>NEJ Nemščina</td><td><span class="red">2</span></td><td><span class="red">2 3</span></td><td style="background-color: #ccc;"></td><td></td><td>2</td></tr>
+</table>
+
+<div class="legend">
+  <p><img src="nok.png" height="16"> ni opravil vseh obveznosti sklopa pozitivno</p>
+  <p><img src="ok.png" height="16"> naknadno opravil vse obveznosti sklopa pozitivno</p>
+  <p><img src="graja.png" height="16"> delno opravil vse obveznosti sklopa pozitivno</p>
+  <p><span class="red">rdeče</span> = pisno, <span class="blue">modro</span> = izdelek, navadno = ustno</p>
+</div>
+
+</body>
+</html>
