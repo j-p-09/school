@@ -235,19 +235,22 @@ function prikaziOcene(row, col) {
     glavniSpan.className = `ocena-box ${oc.tip}`;
     glavniSpan.title = `Datum: ${oc.datum}\nOpombe: ${oc.opombe || '-'}`;
     glavniSpan.innerText = oc.ocena;
+    glavniSpan.style.fontSize = oc.popravek.length > 0 ? '0.75em' : '1em';
     glavniSpan.onclick = () => urediPosameznoOceno(row, col, i);
     td.appendChild(glavniSpan);
 
-    // Prikaži morebitne popravke
     oc.popravek.forEach(pop => {
       const popSpan = document.createElement('span');
-      popSpan.className = `ocena-box ${oc.tip} popravek`;
+      popSpan.className = `ocena-box ${oc.tip}`;
       popSpan.title = `Popravljeno: ${pop.datum}`;
       popSpan.innerText = pop.ocena;
+      popSpan.style.fontWeight = 'bold';
+      popSpan.style.marginLeft = '4px';
       td.appendChild(popSpan);
     });
   });
 }
+
 // Dialog za urejanje obstoječih ocen
 function urediObstojece(row, col) {
   const key = `${row}_${col}`;
@@ -259,9 +262,43 @@ function urediObstojece(row, col) {
   } else {
     ocene.forEach((oc, i) => {
       html += `
-        <div class="ocena-box ${oc.tip}" style="margin:5px 0;" onclick="urediPosameznoOceno(${row}, ${col}, ${i})">
-          ${oc.ocena} (${oc.datum})
+        <div class="ocena-box ${oc.tip}" 
+             style="margin:5px 0; display:block; text-align:left;" 
+             onclick="urediPosameznoOceno(${row}, ${col}, ${i})">
+          Ocena: <strong>${oc.ocena}</strong> (${oc.datum})
         </div>
+      `;
+    });
+    function shraniUrejenoOceno(row, col, index) {
+  const key = `${row}_${col}`;
+  const nova = document.getElementById('trenutna-ocena').value.trim();
+  const opombe = document.getElementById('trenutna-opombe').value.trim();
+
+  if (!nova) {
+    alert("Vpiši oceno.");
+    return;
+  }
+
+  oceneData[key][index].ocena = nova;
+  oceneData[key][index].opombe = opombe;
+
+  prikaziOcene(row, col);
+  closeDialog();
+}
+
+  }
+
+  dialogContainer.style.display = 'flex';
+  dialogContainer.innerHTML = `
+    <div class="dialog-overlay" onclick="closeDialog()">
+      <div class="dialog" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeDialog()">✖</span>
+        ${html}
+      </div>
+      </div>
+  `;
+}
+
       `;
     });
   }
