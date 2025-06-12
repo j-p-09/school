@@ -1,42 +1,40 @@
+<!DOCTYPE html>
+<html lang="sl">
 <head>
   <meta charset="UTF-8" />
   <title>Redovalnica</title>
   <style>
-.dialog-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  display: none;
-  justify-content: center;
-  align-items: center;
-  z-index: 10000;
-}
-
-.dialog-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.6); /* zatemnjeno ozadje */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.vnos-kvadrat {
-  background-color: #eee;
-  width: 40px;
-  height: 40px;
-  font-size: 18px;
-  text-align: center;
-  border: none;
-  border-radius: 6px;
-  box-shadow: inset 0 0 2px #aaa;
-}
-
-
+    .dialog-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+    .dialog-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .vnos-kvadrat {
+      background-color: #eee;
+      width: 40px;
+      height: 40px;
+      font-size: 18px;
+      text-align: center;
+      border: none;
+      border-radius: 6px;
+      box-shadow: inset 0 0 2px #aaa;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -53,25 +51,20 @@
     .pisna { color: red; font-weight: bold; }
     .ustna { color: blue; font-weight: bold; }
     .izdelek { color: purple; font-weight: bold; }
-.ocena-box {
-  display: inline;
-  font-weight: bold;
-  margin: 0 4px;
-  cursor: pointer;
-  background: none;
-  padding: 0;
-  border: none;
-}
-
+    .ocena-box {
+      display: inline-block;
+      font-weight: bold;
+      margin: 3px;
+      cursor: pointer;
+      background: none;
+      padding: 0;
+      border: none;
     }
-    .dialog-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
+    .popravek {
+      font-size: 0.85em;
+      margin-left: 4px;
+      vertical-align: middle;
+      opacity: 0.8;
     }
     .dialog {
       background: white;
@@ -95,13 +88,6 @@
       font-size: 18px;
       cursor: pointer;
       user-select: none;
-    }
-    /* Manjši font za popravke */
-    .popravek {
-      font-size: 0.85em;
-      margin-left: 4px;
-      vertical-align: middle;
-      opacity: 0.8;
     }
   </style>
 </head>
@@ -127,7 +113,7 @@
       <td class="editable xk" data-row="0" data-col="2"></td>
       <td class="editable ocenaste" data-row="0" data-col="3"></td>
       <td class="editable xk" data-row="0" data-col="4"></td>
-      <td></td>
+      <td class="editable konec" data-row="0" data-col="5"></td>
     </tr>
     <tr>
       <td>Slovenščina</td>
@@ -135,27 +121,43 @@
       <td class="editable xk" data-row="1" data-col="2"></td>
       <td class="editable ocenaste" data-row="1" data-col="3"></td>
       <td class="editable xk" data-row="1" data-col="4"></td>
-      <td></td>
+      <td class="editable konec" data-row="1" data-col="5"></td>
     </tr>
+  </tbody>
 </table>
 
-<!-- Kontejner za dialoge -->
 <div id="dialog-container" class="dialog-container"></div>
-
-
-</body>
 <script>
-// Objekt za shranjevanje ocen (key: "row_col")
+// Shranjevanje podatkov v localStorage
+function shraniVLocalStorage() {
+  localStorage.setItem('oceneData', JSON.stringify(oceneData));
+  localStorage.setItem('koncneOcene', JSON.stringify(koncneOcene));
+}
+
+// Nalaganje podatkov iz localStorage
+function naloziIzLocalStorage() {
+  const data = localStorage.getItem('oceneData');
+  const koncne = localStorage.getItem('koncneOcene');
+  if (data) {
+    Object.assign(oceneData, JSON.parse(data));
+  }
+  if (koncne) {
+    Object.assign(koncneOcene, JSON.parse(koncne));
+  }
+}
+
+// Glavni objekti
 const oceneData = {};
+const koncneOcene = {};
 
 const dialogContainer = document.getElementById('dialog-container');
 
+// --- Dialog upravljanje ocen (ostane skoraj isto) ---
 function closeDialog() {
   dialogContainer.style.display = 'none';
   dialogContainer.innerHTML = '';
 }
 
-// Odpri dialog za vpis ali urejanje ocene
 function openOcenaDialog(cell) {
   dialogContainer.style.display = 'flex';
   dialogContainer.innerHTML = `
@@ -170,7 +172,6 @@ function openOcenaDialog(cell) {
   `;
 }
 
-// Prikaži formo za vnos nove ocene
 function showVnosForm(row, col) {
   dialogContainer.innerHTML = `
     <div class="dialog-overlay" onclick="closeDialog()">
@@ -183,8 +184,7 @@ function showVnosForm(row, col) {
           <label><input type="radio" name="tip" value="izdelek" /> <span class="izdelek">IZDELEK</span></label>
         </div>
         <label>Pridobljena ocena:<br>
-<input type="text" id="vnos-ocena" class="vnos-kvadrat" maxlength="2" />
-
+          <input type="text" id="vnos-ocena" class="vnos-kvadrat" maxlength="2" />
         </label>
         <label>Opombe:<br>
           <textarea id="vnos-opombe" rows="3"></textarea>
@@ -195,7 +195,6 @@ function showVnosForm(row, col) {
   `;
 }
 
-// Shrani novo oceno in osveži tabelo
 function shraniOceno(row, col) {
   const tip = document.querySelector('input[name="tip"]:checked')?.value;
   const vrednost = document.getElementById('vnos-ocena').value.trim();
@@ -203,7 +202,7 @@ function shraniOceno(row, col) {
   const key = `${row}_${col}`;
 
   if (!tip || !vrednost) {
-    alert('Izpolni vse potrebne podatke (tip in oceno)!');
+    alert('Izpolni vse podatke!');
     return;
   }
 
@@ -219,10 +218,10 @@ function shraniOceno(row, col) {
   oceneData[key].push(novaOcena);
 
   prikaziOcene(row, col);
+  shraniVLocalStorage();
   closeDialog();
 }
 
-// Render vseh ocen v spodnji celici
 function prikaziOcene(row, col) {
   const key = `${row}_${col}`;
   const td = document.querySelectorAll('#redovalnica tbody tr')[row].children[col];
@@ -235,10 +234,9 @@ function prikaziOcene(row, col) {
     glavniSpan.className = `ocena-box ${oc.tip}`;
     glavniSpan.title = `Datum: ${oc.datum}\nOpombe: ${oc.opombe || '-'}`;
     glavniSpan.innerText = oc.ocena;
-    glavniSpan.onclick = () => urediPosameznoOceno(row, col, i);
+    glavniSpan.onclick = () => naprednoUrejanjeOcene(row, col, i);
     td.appendChild(glavniSpan);
 
-    // Prikaži morebitne popravke
     oc.popravek.forEach(pop => {
       const popSpan = document.createElement('span');
       popSpan.className = `ocena-box ${oc.tip} popravek`;
@@ -248,7 +246,7 @@ function prikaziOcene(row, col) {
     });
   });
 }
-// Dialog za urejanje obstoječih ocen
+
 function urediObstojece(row, col) {
   const key = `${row}_${col}`;
   const ocene = oceneData[key] || [];
@@ -259,8 +257,8 @@ function urediObstojece(row, col) {
   } else {
     ocene.forEach((oc, i) => {
       html += `
-        <div class="ocena-box ${oc.tip}" style="margin:5px 0;" onclick="urediPosameznoOceno(${row}, ${col}, ${i})">
-          ${oc.ocena} (${oc.datum})
+        <div style="margin:5px 0;">
+          <button onclick="naprednoUrejanjeOcene(${row}, ${col}, ${i})">${oc.ocena} (${oc.datum})</button>
         </div>
       `;
     });
@@ -275,9 +273,10 @@ function urediObstojece(row, col) {
     </div>
   `;
 }
+<script>
 
-// Dialog za posamezno oceno (dodaj popravek / izbriši)
-function urediPosameznoOceno(row, col, index) {
+// Napredno urejanje posamezne ocene
+function naprednoUrejanjeOcene(row, col, index) {
   const key = `${row}_${col}`;
   const oc = oceneData[key][index];
 
@@ -285,58 +284,111 @@ function urediPosameznoOceno(row, col, index) {
     <div class="dialog-overlay" onclick="closeDialog()">
       <div class="dialog" onclick="event.stopPropagation()">
         <span class="close-btn" onclick="closeDialog()">✖</span>
-        <h3>Ocena: ${oc.ocena} (${oc.datum})</h3>
-        <p><strong>Opombe:</strong> ${oc.opombe || '-'}</p>
-        <button onclick="dodajPopravek(${row}, ${col}, ${index})">Dodaj popravljanje</button>
-        <button onclick="izbrisiOceno(${row}, ${col}, ${index})">Izbriši</button>
+        <h3>Trenutna ocena:</h3>
+        <input class="vnos-kvadrat" id="novaOcena" value="${oc.ocena}">
+        <br><br>
+        <button onclick="odpriOpombe(${row}, ${col}, ${index})">Opombe</button>
+        <h4>Popravljeno s:</h4>
+        <input class="vnos-kvadrat" id="novaPopravljena" placeholder="nova ocena">
+        <br><br>
+        <button onclick="dodajNovPopravek(${row}, ${col}, ${index})">Dodaj popravek in opombo</button>
       </div>
     </div>
   `;
 }
 
-// Dialog za vnos popravka
-function dodajPopravek(row, col, index) {
-  const oc = oceneData[`${row}_${col}`][index];
-  if (oc.popravek.length >= 4) {
-    alert('Doseženo maksimalno število popravljanj (4).');
-    return;
-  }
+function odpriOpombe(row, col, index) {
+  const key = `${row}_${col}`;
+  const oc = oceneData[key][index];
 
   dialogContainer.innerHTML = `
     <div class="dialog-overlay" onclick="closeDialog()">
       <div class="dialog" onclick="event.stopPropagation()">
         <span class="close-btn" onclick="closeDialog()">✖</span>
-        <h3>Dodaj popravek</h3>
-        <input type="text" id="nova-popravna" placeholder="Nova ocena" />
-        <button onclick="shraniPopravek(${row}, ${col}, ${index})">Shrani popravek</button>
+        <h3>Opombe</h3>
+        <textarea id="opombeVnos" rows="4">${oc.opombe || ''}</textarea><br><br>
+        <button onclick="shraniOpombe(${row}, ${col}, ${index})">Shrani opombe</button>
       </div>
     </div>
   `;
 }
 
-// Shrani popravek in osveži prikaz
-function shraniPopravek(row, col, index) {
-  const val = document.getElementById('nova-popravna').value.trim();
-  if (!val) {
-    alert('Vpiši oceno!');
-    return;
+function shraniOpombe(row, col, index) {
+  const key = `${row}_${col}`;
+  const nova = document.getElementById('opombeVnos').value;
+  oceneData[key][index].opombe = nova;
+  shraniVLocalStorage();
+  closeDialog();
+}
+
+function dodajNovPopravek(row, col, index) {
+  const key = `${row}_${col}`;
+  const novaOcena = document.getElementById('novaOcena').value.trim();
+  const novaPopravljena = document.getElementById('novaPopravljena').value.trim();
+
+  if (novaOcena) {
+    oceneData[key][index].ocena = novaOcena;
   }
-  oceneData[`${row}_${col}`][index].popravek.push({
-    ocena: val,
-    datum: new Date().toLocaleDateString()
+  if (novaPopravljena) {
+    if (oceneData[key][index].popravek.length >= 4) {
+      alert("Maksimalno 4 popravki.");
+      return;
+    }
+    oceneData[key][index].popravek.push({
+      ocena: novaPopravljena,
+      datum: new Date().toLocaleDateString()
+    });
+  }
+
+  prikaziOcene(row, col);
+  shraniVLocalStorage();
+  closeDialog();
+}
+
+// --- Modal za končno oceno ---
+
+function openKonecDialog(cell) {
+  const row = cell.dataset.row;
+  const col = cell.dataset.col;
+  const keyPrefix = `${row}_`;
+  let vseOcene = [];
+
+  Object.keys(oceneData).forEach(k => {
+    if (k.startsWith(keyPrefix) && !k.endsWith("_5")) {
+      oceneData[k].forEach(oc => {
+        vseOcene.push(parseFloat(oc.ocena));
+        oc.popravek.forEach(pop => vseOcene.push(parseFloat(pop.ocena)));
+      });
+    }
   });
-  prikaziOcene(row, col);
+
+  let povprecje = vseOcene.length ? (vseOcene.reduce((a,b)=>a+b,0) / vseOcene.length).toFixed(2) : "N/A";
+
+  let vnaprej = koncneOcene[row] || '';
+
+  dialogContainer.innerHTML = `
+    <div class="dialog-overlay" onclick="closeDialog()">
+      <div class="dialog" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeDialog()">✖</span>
+        <h3>Povprečje: ${povprecje}</h3>
+        <input id="koncnaVrednost" class="vnos-kvadrat" maxlength="2" value="${vnaprej}">
+        <br><br>
+        <button onclick="shraniKoncno(${row})">Shrani končno oceno</button>
+      </div>
+    </div>
+  `;
+}
+
+function shraniKoncno(row) {
+  const vrednost = document.getElementById('koncnaVrednost').value.trim();
+  koncneOcene[row] = vrednost;
+  const td = document.querySelectorAll('#redovalnica tbody tr')[row].children[5];
+  td.innerText = vrednost;
+  shraniVLocalStorage();
   closeDialog();
 }
 
-// Izbriši oceno
-function izbrisiOceno(row, col, index) {
-  oceneData[`${row}_${col}`].splice(index, 1);
-  prikaziOcene(row, col);
-  closeDialog();
-}
-
-// XK celice: odpri dialog za X ali K
+// --- XK logika ostane enaka ---
 function openXKDialog(cell) {
   dialogContainer.style.display = 'flex';
   dialogContainer.innerHTML = `
@@ -351,15 +403,31 @@ function openXKDialog(cell) {
   `;
 }
 
-// Nastavi X ali K v celico
 function setXK(row, col, img) {
   const td = document.querySelectorAll('#redovalnica tbody tr')[row].children[col];
   td.innerHTML = `<img src="${img}" height="20">`;
-  td.onclick = () => openXKDialog(td); // omogoči ponovno urejanje
+  td.onclick = () => openXKDialog(td);
+  shraniVLocalStorage();
   closeDialog();
 }
 
-// Dodaj event listenerje na vse 'editable' celice
+// --- Inicializacija ---
+
+naloziIzLocalStorage();
+
+// Osveži tabelo po nalaganju
+document.querySelectorAll('#redovalnica tbody tr').forEach((tr, r) => {
+  tr.querySelectorAll('td.editable').forEach(td => {
+    const col = td.dataset.col;
+    if (col == 5) {
+      td.innerText = koncneOcene[r] || '';
+    } else {
+      prikaziOcene(r, col);
+    }
+  });
+});
+
+// Event listenerji
 document.querySelectorAll('#redovalnica tbody tr').forEach((tr, r) => {
   tr.querySelectorAll('td.editable').forEach(td => {
     td.addEventListener('click', () => {
@@ -367,11 +435,11 @@ document.querySelectorAll('#redovalnica tbody tr').forEach((tr, r) => {
         openOcenaDialog(td);
       } else if (td.classList.contains('xk')) {
         openXKDialog(td);
+      } else if (td.classList.contains('konec')) {
+        openKonecDialog(td);
       }
     });
   });
 });
 
 </script>
-</body>
-</html>
