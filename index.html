@@ -1,444 +1,377 @@
-<!DOCTYPE html>
-<html lang="sl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Urejanje ocen</title>
+  <title>Redovalnica</title>
   <style>
+.dialog-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.dialog-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6); /* zatemnjeno ozadje */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.vnos-kvadrat {
+  background-color: #eee;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  text-align: center;
+  border: none;
+  border-radius: 6px;
+  box-shadow: inset 0 0 2px #aaa;
+}
+
+
     table {
-      border-collapse: collapse;
       width: 100%;
-      max-width: 900px;
-      margin: auto;
+      border-collapse: collapse;
+      margin-top: 20px;
     }
     th, td {
-      border: 1px solid #888;
-      padding: 6px 10px;
+      border: 1px solid #aaa;
+      padding: 10px;
       text-align: center;
-      font-size: 1em;
-      cursor: default;
-      position: relative;
     }
-    td.konec {
-      cursor: pointer;
-      font-weight: normal;
-      font-size: 1em;
+    th img {
+      height: 20px;
     }
-    input.vnos-kvadrat {
-      width: 40px;
-      height: 40px;
-      font-size: 1.5em;
-      text-align: center;
-      border: 1px solid #ccc;
-      background: #eee;
-      cursor: pointer;
-    }
-    .btn {
-      padding: 6px 10px;
-      margin: 4px;
-      cursor: pointer;
+    .pisna { color: red; font-weight: bold; }
+    .ustna { color: blue; font-weight: bold; }
+    .izdelek { color: purple; font-weight: bold; }
+.ocena-box {
+  display: inline;
+  font-weight: bold;
+  margin: 0 4px;
+  cursor: pointer;
+  background: none;
+  padding: 0;
+  border: none;
+}
+
     }
     .dialog-overlay {
       position: fixed;
-      top: 0; left: 0; right:0; bottom:0;
-      background: rgba(0,0,0,0.5);
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
       display: flex;
-      align-items: center;
       justify-content: center;
-      z-index: 1000;
+      align-items: center;
+      z-index: 9999;
     }
     .dialog {
       background: white;
-      border-radius: 6px;
       padding: 20px;
-      width: 400px;
-      box-shadow: 0 0 10px #0004;
+      border-radius: 8px;
+      width: 320px;
+      max-width: 90vw;
+      box-sizing: border-box;
       position: relative;
+    }
+    .icon-btn {
+      cursor: pointer;
+      margin: 5px;
+      height: 30px;
     }
     .close-btn {
       position: absolute;
-      top: 6px; right: 8px;
-      cursor: pointer;
-      font-size: 1.4em;
+      top: 8px;
+      right: 12px;
       font-weight: bold;
+      font-size: 18px;
+      cursor: pointer;
+      user-select: none;
     }
-    textarea {
-      width: 100%;
-      height: 60px;
-      resize: vertical;
-      font-size: 1em;
-    }
-    hr {
-      margin: 15px 0;
+    /* Manjši font za popravke */
+    .popravek {
+      font-size: 0.85em;
+      margin-left: 4px;
+      vertical-align: middle;
+      opacity: 0.8;
     }
   </style>
 </head>
 <body>
 
-<h2 style="text-align:center;">Pregled in urejanje ocen</h2>
+<h2>Redovalnica</h2>
 
-<table id="tabela-ocene">
+<table id="redovalnica">
   <thead>
     <tr>
-      <th>Učenec</th>
+      <th>Predmet</th>
       <th>A</th>
+      <th><img src="graja.png" alt="XK" /></th>
       <th>B</th>
+      <th><img src="graja.png" alt="XK" /></th>
       <th>Konec</th>
     </tr>
   </thead>
-  <tbody id="telo-tabele">
-    <!-- Dinamično se doda vrstic -->
-  </tbody>
+  <tbody>
+    <tr>
+      <td>Matematika</td>
+      <td class="editable ocenaste" data-row="0" data-col="1"></td>
+      <td class="editable xk" data-row="0" data-col="2"></td>
+      <td class="editable ocenaste" data-row="0" data-col="3"></td>
+      <td class="editable xk" data-row="0" data-col="4"></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Slovenščina</td>
+      <td class="editable ocenaste" data-row="1" data-col="1"></td>
+      <td class="editable xk" data-row="1" data-col="2"></td>
+      <td class="editable ocenaste" data-row="1" data-col="3"></td>
+      <td class="editable xk" data-row="1" data-col="4"></td>
+      <td></td>
+    </tr>
 </table>
 
-<div id="dialogContainer"></div>
+<!-- Kontejner za dialoge -->
+<div id="dialog-container" class="dialog-container"></div>
 
+
+</body>
 <script>
-const uczenci = ['Ana', 'Bojan', 'Cilka', 'David', 'Eva'];
+// Objekt za shranjevanje ocen (key: "row_col")
+const oceneData = {};
 
-let oceneData = {}; // Ključ: "vrstica_stolpec", vrednost: array ocen in popravljanj
+const dialogContainer = document.getElementById('dialog-container');
 
-const dialogContainer = document.getElementById('dialogContainer');
-
-function shraniOcene() {
-  localStorage.setItem('oceneData', JSON.stringify(oceneData));
+function closeDialog() {
+  dialogContainer.style.display = 'none';
+  dialogContainer.innerHTML = '';
 }
 
-function naloziOcene() {
-  const podatki = localStorage.getItem('oceneData');
-  if (podatki) {
-    oceneData = JSON.parse(podatki);
-  } else {
-    // Inicializiraj prazne strukture
-    uczenci.forEach((_, i) => {
-      ['A', 'B'].forEach(col => {
-        oceneData[`${i}_${col}`] = [];
-      });
-    });
-  }
-}
-
-function prikaziTabelo() {
-  const tbody = document.getElementById('telo-tabele');
-  tbody.innerHTML = '';
-  uczenci.forEach((ucenec, i) => {
-    const tr = document.createElement('tr');
-    // Ime učenca
-    const tdIme = document.createElement('td');
-    tdIme.textContent = ucenec;
-    tr.appendChild(tdIme);
-
-    // Stolpec A in B
-    ['A', 'B'].forEach(col => {
-      const td = document.createElement('td');
-      td.style.cursor = 'pointer';
-      td.style.minWidth = '120px';
-      td.style.whiteSpace = 'nowrap';
-      td.onclick = () => prikaziOcene(i, col);
-      prikaziOceneVCelici(td, i, col);
-      tr.appendChild(td);
-    });
-
-    // Stolpec Konec
-    const tdKonec = document.createElement('td');
-    tdKonec.classList.add('konec');
-    tdKonec.title = 'Klik za izračun zaključne ocene';
-    tdKonec.onclick = () => {
-      izracunajZakljucnoOceno(i, tdKonec);
-    };
-    // Če je že shranjena zaključna ocena, pokaži jo
-    const zakljucna = getZakljucnaOcena(i);
-    if (zakljucna) {
-      tdKonec.textContent = zakljucna;
-      tdKonec.style.fontWeight = 'bold';
-      tdKonec.style.fontSize = '2em';
-    }
-    tr.appendChild(tdKonec);
-
-    tbody.appendChild(tr);
-  });
-}
-
-function prikaziOceneVCelici(td, row, col) {
-  const key = `${row}_${col}`;
-  td.innerHTML = ''; // počisti
-
-  if (!oceneData[key] || oceneData[key].length === 0) {
-    td.textContent = '(ni ocen)';
-    td.style.color = '#777';
-    return;
-  }
-
-  oceneData[key].forEach((ocena, idx) => {
-    const spanOcena = document.createElement('span');
-    spanOcena.textContent = ocena.ocena;
-    spanOcena.title = `Opombe: ${ocena.opombe || '(ni opomb)'}\nPopravki: ${ocena.popravek.length}`;
-    spanOcena.style.marginRight = '8px';
-    spanOcena.style.cursor = 'pointer';
-    spanOcena.style.padding = '4px 6px';
-    spanOcena.style.border = '1px solid #ccc';
-    spanOcena.style.borderRadius = '4px';
-    spanOcena.style.backgroundColor = '#f9f9f9';
-
-    spanOcena.onclick = e => {
-      e.stopPropagation();
-      urediPosameznoOceno(row, col, idx);
-    };
-
-    td.appendChild(spanOcena);
-  });
-}
-
-// --- Prikaz pogovornega okna z vsemi ocenami in možnostjo urejanja ---
-function prikaziOcene(row, col) {
-  const key = `${row}_${col}`;
-  const ocene = oceneData[key] || [];
-
-  let vseOceneHtml = '<h3>Ocene za ' + uczenci[row] + ' - stolpec ' + col + '</h3>';
-  vseOceneHtml += '<ul style="list-style:none; padding-left:0; max-height: 200px; overflow-y:auto;">';
-  ocene.forEach((ocena, i) => {
-    vseOceneHtml += `<li style="margin-bottom:6px;">
-      <button onclick="urediPosameznoOceno(${row}, '${col}', ${i})" style="padding:4px 8px; cursor:pointer;">
-        Ocena: ${ocena.ocena} (popravkov: ${ocena.popravek.length})
-      </button>
-    </li>`;
-  });
-  vseOceneHtml += '</ul>';
-  vseOceneHtml += `<button onclick="dodajNovoOceno(${row}, '${col}')" style="margin-top:10px;">Dodaj novo oceno</button>`;
-  vseOceneHtml += `<button onclick="closeDialog()" style="margin-left:20px;">Zapri</button>`;
-
+// Odpri dialog za vpis ali urejanje ocene
+function openOcenaDialog(cell) {
+  dialogContainer.style.display = 'flex';
   dialogContainer.innerHTML = `
     <div class="dialog-overlay" onclick="closeDialog()">
       <div class="dialog" onclick="event.stopPropagation()">
         <span class="close-btn" onclick="closeDialog()">✖</span>
-        ${vseOceneHtml}
+        <h3>Upravljanje ocen</h3>
+        <button onclick="showVnosForm(${cell.dataset.row}, ${cell.dataset.col})">VPIŠI OCENO</button>
+        <button onclick="urediObstojece(${cell.dataset.row}, ${cell.dataset.col})">UREDI OBSTOJEČE OCENE</button>
       </div>
     </div>
   `;
 }
 
-function closeDialog() {
-  dialogContainer.innerHTML = '';
-}
-
-// --- Dodajanje nove ocene ---
-function dodajNovoOceno(row, col) {
+// Prikaži formo za vnos nove ocene
+function showVnosForm(row, col) {
   dialogContainer.innerHTML = `
-  <div class="dialog-overlay" onclick="closeDialog()">
-    <div class="dialog" onclick="event.stopPropagation()">
-      <span class="close-btn" onclick="closeDialog()">✖</span>
-      <h3>Dodaj novo oceno za ${uczenci[row]} - stolpec ${col}</h3>
-      <label>
-        Ocena (1,2,3,4,5 ali N):<br>
-        <input type="text" id="nova-ocena-vnos" maxlength="2" class="vnos-kvadrat" />
-      </label>
-      <br>
-      <label>
-        Opombe:<br>
-        <textarea id="nova-opombe-vnos"></textarea>
-      </label>
-      <br>
-      <button onclick="shraniNovoOceno(${row}, '${col}')">Shrani</button>
-      <button onclick="closeDialog()" style="margin-left:10px;">Prekliči</button>
+    <div class="dialog-overlay" onclick="closeDialog()">
+      <div class="dialog" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeDialog()">✖</span>
+        <h3>Vpiši oceno</h3>
+        <div>
+          <label><input type="radio" name="tip" value="pisna" /> <span class="pisna">PISNA OCENA</span></label><br>
+          <label><input type="radio" name="tip" value="ustna" /> <span class="ustna">USTNA OCENA</span></label><br>
+          <label><input type="radio" name="tip" value="izdelek" /> <span class="izdelek">IZDELEK</span></label>
+        </div>
+        <label>Pridobljena ocena:<br>
+<input type="text" id="vnos-ocena" class="vnos-kvadrat" maxlength="2" />
+
+        </label>
+        <label>Opombe:<br>
+          <textarea id="vnos-opombe" rows="3"></textarea>
+        </label>
+        <button onclick="shraniOceno(${row}, ${col})">Shrani</button>
+      </div>
     </div>
-  </div>
   `;
 }
 
-function shraniNovoOceno(row, col) {
-  const novaOcena = document.getElementById('nova-ocena-vnos').value.trim().toUpperCase();
-  const opombe = document.getElementById('nova-opombe-vnos').value.trim();
+// Shrani novo oceno in osveži tabelo
+function shraniOceno(row, col) {
+  const tip = document.querySelector('input[name="tip"]:checked')?.value;
+  const vrednost = document.getElementById('vnos-ocena').value.trim();
+  const opombe = document.getElementById('vnos-opombe').value.trim();
+  const key = `${row}_${col}`;
 
-  if (!['1','2','3','4','5','N'].includes(novaOcena)) {
-    alert('Ocena mora biti 1,2,3,4,5 ali N.');
+  if (!tip || !vrednost) {
+    alert('Izpolni vse potrebne podatke (tip in oceno)!');
     return;
   }
 
-  const key = `${row}_${col}`;
-  if (!oceneData[key]) {
-    oceneData[key] = [];
-  }
-  oceneData[key].push({ ocena: novaOcena, opombe: opombe, popravek: [] });
+  const novaOcena = {
+    tip: tip,
+    ocena: vrednost,
+    opombe: opombe,
+    datum: new Date().toLocaleDateString(),
+    popravek: []
+  };
 
-  shraniOcene();
-  prikaziTabelo();
+  if (!oceneData[key]) oceneData[key] = [];
+  oceneData[key].push(novaOcena);
+
+  prikaziOcene(row, col);
   closeDialog();
 }
 
-// --- Modalno urejanje posamezne ocene s popravljanjem ---
+// Render vseh ocen v spodnji celici
+function prikaziOcene(row, col) {
+  const key = `${row}_${col}`;
+  const td = document.querySelectorAll('#redovalnica tbody tr')[row].children[col];
+  td.innerHTML = '';
+
+  if (!oceneData[key]) return;
+
+  oceneData[key].forEach((oc, i) => {
+    const glavniSpan = document.createElement('span');
+    glavniSpan.className = `ocena-box ${oc.tip}`;
+    glavniSpan.title = `Datum: ${oc.datum}\nOpombe: ${oc.opombe || '-'}`;
+    glavniSpan.innerText = oc.ocena;
+    glavniSpan.onclick = () => urediPosameznoOceno(row, col, i);
+    td.appendChild(glavniSpan);
+
+    // Prikaži morebitne popravke
+    oc.popravek.forEach(pop => {
+      const popSpan = document.createElement('span');
+      popSpan.className = `ocena-box ${oc.tip} popravek`;
+      popSpan.title = `Popravljeno: ${pop.datum}`;
+      popSpan.innerText = pop.ocena;
+      td.appendChild(popSpan);
+    });
+  });
+}
+// Dialog za urejanje obstoječih ocen
+function urediObstojece(row, col) {
+  const key = `${row}_${col}`;
+  const ocene = oceneData[key] || [];
+
+  let html = '<h3>Obstoječe ocene</h3>';
+  if (ocene.length === 0) {
+    html += '<p>Ni vpisanih ocen.</p>';
+  } else {
+    ocene.forEach((oc, i) => {
+      html += `
+        <div class="ocena-box ${oc.tip}" style="margin:5px 0;" onclick="urediPosameznoOceno(${row}, ${col}, ${i})">
+          ${oc.ocena} (${oc.datum})
+        </div>
+      `;
+    });
+  }
+
+  dialogContainer.innerHTML = `
+    <div class="dialog-overlay" onclick="closeDialog()">
+      <div class="dialog" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeDialog()">✖</span>
+        ${html}
+      </div>
+    </div>
+  `;
+}
+
+// Dialog za posamezno oceno (dodaj popravek / izbriši)
 function urediPosameznoOceno(row, col, index) {
   const key = `${row}_${col}`;
   const oc = oceneData[key][index];
 
   dialogContainer.innerHTML = `
     <div class="dialog-overlay" onclick="closeDialog()">
-      <div class="dialog" onclick="event.stopPropagation()" style="max-width: 420px;">
+      <div class="dialog" onclick="event.stopPropagation()">
         <span class="close-btn" onclick="closeDialog()">✖</span>
-        <h3>Uredi oceno za ${uczenci[row]} - stolpec ${col}</h3>
-
-        <label>
-          Trenutna ocena:<br>
-          <input type="text" id="trenutna-ocena" class="vnos-kvadrat" maxlength="2" value="${oc.ocena}" />
-          <button onclick="toggleOpombe('opombe-ocena')">...</button>
-        </label>
-        <div id="opombe-ocena" style="display:none; margin:6px 0;">
-          <label>Opombe:<br>
-            <textarea id="opombe-tekst">${oc.opombe || ''}</textarea>
-          </label>
-        </div>
-
-        <hr>
-
-        <label>
-          Popravljeno z:<br>
-          <input type="text" id="nova-ocena" class="vnos-kvadrat" maxlength="2" />
-          <button onclick="toggleOpombe('opombe-popravek')">...</button>
-        </label>
-        <div id="opombe-popravek" style="display:none; margin:6px 0;">
-          <label>Opombe k popravku:<br>
-            <textarea id="opombe-popravek-tekst"></textarea>
-          </label>
-        </div>
-
-        <div style="margin-top:10px; display:flex; gap:10px; flex-wrap: wrap;">
-          <button onclick="shraniUrejenoOceno(${row}, '${col}', ${index})">Shrani spremembe</button>
-          <button onclick="dodajPopravekIzUrejanja(${row}, '${col}', ${index})">Dodaj popravek</button>
-          <button onclick="izbrisiOceno(${row}, '${col}', ${index})" style="color: red;">Izbriši oceno</button>
-        </div>
+        <h3>Ocena: ${oc.ocena} (${oc.datum})</h3>
+        <p><strong>Opombe:</strong> ${oc.opombe || '-'}</p>
+        <button onclick="dodajPopravek(${row}, ${col}, ${index})">Dodaj popravljanje</button>
+        <button onclick="izbrisiOceno(${row}, ${col}, ${index})">Izbriši</button>
       </div>
     </div>
   `;
 }
 
-function toggleOpombe(id) {
-  const el = document.getElementById(id);
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-function shraniUrejenoOceno(row, col, index) {
-  const key = `${row}_${col}`;
-  const oc = oceneData[key][index];
-  const novaTrenutna = document.getElementById('trenutna-ocena').value.trim().toUpperCase();
-  const opombeOcena = document.getElementById('opombe-tekst').value.trim();
-
-  if (!['1','2','3','4','5','N'].includes(novaTrenutna)) {
-    alert('Ocena mora biti 1,2,3,4,5 ali N.');
-    return;
-  }
-  oc.ocena = novaTrenutna;
-  oc.opombe = opombeOcena;
-
-  shraniOcene();
-  prikaziTabelo();
-  closeDialog();
-}
-
-function dodajPopravekIzUrejanja(row, col, index) {
-  const key = `${row}_${col}`;
-  const oc = oceneData[key][index];
-  const novaOcena = document.getElementById('nova-ocena').value.trim().toUpperCase();
-  const opombePopravek = document.getElementById('opombe-popravek-tekst').value.trim();
-
-  if (!['1','2','3','4','5','N'].includes(novaOcena)) {
-    alert('Popravek mora biti 1,2,3,4,5 ali N.');
-    return;
-  }
+// Dialog za vnos popravka
+function dodajPopravek(row, col, index) {
+  const oc = oceneData[`${row}_${col}`][index];
   if (oc.popravek.length >= 4) {
     alert('Doseženo maksimalno število popravljanj (4).');
     return;
   }
 
-  oc.popravek.push({
-    ocena: novaOcena,
-    opombe: opombePopravek,
-    datum: new Date().toLocaleDateString()
-  });
-
-  shraniOcene();
-  prikaziTabelo();
-  closeDialog();
+  dialogContainer.innerHTML = `
+    <div class="dialog-overlay" onclick="closeDialog()">
+      <div class="dialog" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeDialog()">✖</span>
+        <h3>Dodaj popravek</h3>
+        <input type="text" id="nova-popravna" placeholder="Nova ocena" />
+        <button onclick="shraniPopravek(${row}, ${col}, ${index})">Shrani popravek</button>
+      </div>
+    </div>
+  `;
 }
 
-function izbrisiOceno(row, col, index) {
-  if (!confirm('Res želite izbrisati to oceno?')) return;
-  const key = `${row}_${col}`;
-  oceneData[key].splice(index, 1);
-  shraniOcene();
-  prikaziTabelo();
-  closeDialog();
-}
-
-// --- Izračun povprečja (vse ocene in vsi popravki) ---
-function izracunajPovprecje(row) {
-  let vseOcene = [];
-  ['A','B'].forEach(col => {
-    const key = `${row}_${col}`;
-    if (oceneData[key]) {
-      oceneData[key].forEach(o => {
-        if (o.ocena !== 'N') {
-          const val = parseFloat(o.ocena);
-          if (!isNaN(val)) vseOcene.push(val);
-        }
-        o.popravek.forEach(p => {
-          if (p.ocena !== 'N') {
-            const val = parseFloat(p.ocena);
-            if (!isNaN(val)) vseOcene.push(val);
-          }
-        });
-      });
-    }
-  });
-  if (vseOcene.length === 0) return null;
-  const sum = vseOcene.reduce((a,b)=>a+b,0);
-  return sum / vseOcene.length;
-}
-
-// --- Zaključna ocena in prikaz povprečja ---
-function izracunajZakljucnoOceno(row, tdKonec) {
-  const povprecje = izracunajPovprecje(row);
-  if (povprecje === null) {
-    tdKonec.textContent = '';
-    setZakljucnaOcena(row, '');
-    alert('Ni vpisanih ocen za izračun.');
+// Shrani popravek in osveži prikaz
+function shraniPopravek(row, col, index) {
+  const val = document.getElementById('nova-popravna').value.trim();
+  if (!val) {
+    alert('Vpiši oceno!');
     return;
   }
-
-  let zakljucna;
-  if (povprecje >= 0 && povprecje < 1.5) zakljucna = '1';
-  else if (povprecje >= 1.5 && povprecje < 2.5) zakljucna = '2';
-  else if (povprecje >= 2.5 && povprecje < 3.5) zakljucna = '3';
-  else if (povprecje >= 3.5 && povprecje < 4.6) zakljucna = '4';
-  else if (povprecje >= 4.6 && povprecje <= 5) zakljucna = '5';
-  else zakljucna = 'N';
-
-  tdKonec.textContent = zakljucna;
-  tdKonec.style.fontWeight = 'bold';
-  tdKonec.style.fontSize = '2em';
-
-  setZakljucnaOcena(row, zakljucna);
-
-  alert(`Povprečje ocen: ${povprecje.toFixed(2)}\nZaključna ocena: ${zakljucna}`);
+  oceneData[`${row}_${col}`][index].popravek.push({
+    ocena: val,
+    datum: new Date().toLocaleDateString()
+  });
+  prikaziOcene(row, col);
+  closeDialog();
 }
 
-// --- Shranjevanje in branje zaključnih ocen posebej ---
-function setZakljucnaOcena(row, ocena) {
-  let zakljucne = JSON.parse(localStorage.getItem('zakljucneOcene') || '{}');
-  zakljucne[row] = ocena;
-  localStorage.setItem('zakljucneOcene', JSON.stringify(zakljucne));
-}
-function getZakljucnaOcena(row) {
-  let zakljucne = JSON.parse(localStorage.getItem('zakljucneOcene') || '{}');
-  return zakljucne[row] || '';
+// Izbriši oceno
+function izbrisiOceno(row, col, index) {
+  oceneData[`${row}_${col}`].splice(index, 1);
+  prikaziOcene(row, col);
+  closeDialog();
 }
 
-// --- Inicializacija ---
-function inicializiraj() {
-  naloziOcene();
-  prikaziTabelo();
+// XK celice: odpri dialog za X ali K
+function openXKDialog(cell) {
+  dialogContainer.style.display = 'flex';
+  dialogContainer.innerHTML = `
+    <div class="dialog-overlay" onclick="closeDialog()">
+      <div class="dialog" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeDialog()">✖</span>
+        <h3>Izberi možnost</h3>
+        <img src="nok.png" class="icon-btn" onclick="setXK(${cell.dataset.row}, ${cell.dataset.col}, 'nok.png')" alt="X">
+        <img src="ok.png" class="icon-btn" onclick="setXK(${cell.dataset.row}, ${cell.dataset.col}, 'ok.png')" alt="K">
+      </div>
+    </div>
+  `;
 }
 
-window.onload = inicializiraj;
+// Nastavi X ali K v celico
+function setXK(row, col, img) {
+  const td = document.querySelectorAll('#redovalnica tbody tr')[row].children[col];
+  td.innerHTML = `<img src="${img}" height="20">`;
+  td.onclick = () => openXKDialog(td); // omogoči ponovno urejanje
+  closeDialog();
+}
+
+// Dodaj event listenerje na vse 'editable' celice
+document.querySelectorAll('#redovalnica tbody tr').forEach((tr, r) => {
+  tr.querySelectorAll('td.editable').forEach(td => {
+    td.addEventListener('click', () => {
+      if (td.classList.contains('ocenaste')) {
+        openOcenaDialog(td);
+      } else if (td.classList.contains('xk')) {
+        openXKDialog(td);
+      }
+    });
+  });
+});
+
 </script>
-
 </body>
 </html>
