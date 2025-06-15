@@ -143,7 +143,7 @@ function saveGrade() {
   span.dataset.opomba = opomba;
   span.dataset.type = currentType;
   span.onclick = function() { openEditModal(this); };
-  currentCell.insertBefore(span, currentCell.firstChild);
+  currentCell.appendChild(span);
   saveToStorage();
   closeModal();
 }
@@ -216,6 +216,7 @@ window.onload = function() {
       });
     }
   }
+  // Ponovno nastavimo click za stolpec Konec
   document.querySelectorAll('#ocenaTabela td').forEach(td => {
     if (td.id.includes('_K')) {
       td.onclick = () => openKonecModal(td);
@@ -244,6 +245,7 @@ function closeKonecModal() {
 
 function setKonecGrade(grade) {
   currentKonecCell.innerHTML = `<span class='final-grade'>${grade}</span>`;
+  currentKonecCell.onclick = () => openKonecModal(currentKonecCell);
   saveToStorage();
   closeKonecModal();
 }
