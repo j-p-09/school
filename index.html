@@ -53,6 +53,7 @@
   </tbody>
 </table>
 
+<!-- Modal za vnos opombe pri vnosu nove ocene -->
 <div class="modal" id="opombaModal">
   <div class="modal-content">
     <span class="close" onclick="closeModal()">&times;</span>
@@ -63,6 +64,7 @@
   </div>
 </div>
 
+<!-- Modal za urejanje obstoječe ocene -->
 <div class="modal" id="urejanjeModal">
   <div class="modal-content">
     <span class="close" onclick="closeEditModal()">&times;</span>
@@ -83,6 +85,7 @@
   </div>
 </div>
 
+<!-- Modal za vnos zaključne ocene -->
 <div class="modal" id="konecModal">
   <div class="modal-content">
     <span class="close" onclick="closeKonecModal()">&times;</span>
@@ -112,9 +115,10 @@ function setType(type) {
     if (td.id.includes('_1') || td.id.includes('_2')) {
       let input = document.createElement('input');
       input.className = 'grade-input';
-      input.placeholder = 'O';
+      input.placeholder = '';
       input.addEventListener('keydown', function(e){
         if(e.key === 'Enter') {
+          if (!input.value.trim()) return;
           currentCell = td;
           openModal(input.value);
         }
@@ -144,6 +148,7 @@ function saveGrade() {
   span.dataset.type = currentType;
   span.onclick = function() { openEditModal(this); };
   currentCell.appendChild(span);
+  currentCell.querySelector('.grade-input').remove();
   saveToStorage();
   closeModal();
 }
@@ -169,87 +174,85 @@ function toggleOpombe() {
 }
 function toggleNewOpombe() {
   let el = document.getElementById('newOpombeEdit');
-  el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+  el.style.display = (el.style.display === 'none') ? '
+block' : 'none';
 }
 
 function saveEdit() {
-  let oldGrade = document.getElementById('editOldGrade').value;
-  let oldOpomba = document.getElementById('editOpomba').value;
-  let newGrade = document.getElementById('editNewGrade').value;
-  let newOpomba = document.getElementById('editNewOpomba').value;
+let oldGrade = document.getElementById('editOldGrade').value;
+let oldOpomba = document.getElementById('editOpomba').value;
+let newGrade = document.getElementById('editNewGrade').value;
+let newOpomba = document.getElementById('editNewOpomba').value;
 
-  if(newGrade) {
-    editData.innerHTML = `<span class='small'>${oldGrade}</span> ${newGrade}`;
-    editData.dataset.opomba = newOpomba;
-  } else {
-    editData.innerText = oldGrade;
-    editData.dataset.opomba = oldOpomba;
-  }
-  saveToStorage();
-  closeEditModal();
+if(newGrade) {
+editData.innerHTML = <span class='small'>${oldGrade}</span> ${newGrade};
+editData.dataset.opomba = newOpomba;
+} else {
+editData.innerText = oldGrade;
+editData.dataset.opomba = oldOpomba;
+}
+saveToStorage();
+closeEditModal();
 }
 
 function deleteGrade() {
-  editData.remove();
-  saveToStorage();
-  closeEditModal();
+editData.remove();
+saveToStorage();
+closeEditModal();
 }
 
 function saveToStorage() {
-  let data = {};
-  document.querySelectorAll('#ocenaTabela td').forEach(td => {
-    let id = td.id;
-    data[id] = td.innerHTML;
-  });
-  localStorage.setItem('ocene', JSON.stringify(data));
+let data = {};
+document.querySelectorAll('#ocenaTabela td').forEach(td => {
+let id = td.id;
+data[id] = td.innerHTML;
+});
+localStorage.setItem('ocene', JSON.stringify(data));
 }
 
 window.onload = function() {
-  let saved = localStorage.getItem('ocene');
-  if(saved) {
-    let data = JSON.parse(saved);
-    for(let id in data) {
-      let td = document.getElementById(id);
-      td.innerHTML = data[id];
-      td.querySelectorAll('.grade').forEach(span => {
-        span.onclick = function() { openEditModal(this); };
-      });
-    }
-  }
-  // Ponovno nastavimo click za stolpec Konec
-  document.querySelectorAll('#ocenaTabela td').forEach(td => {
-    if (td.id.includes('_K')) {
-      td.onclick = () => openKonecModal(td);
-    }
-  });
+let saved = localStorage.getItem('ocene');
+if(saved) {
+let data = JSON.parse(saved);
+for(let id in data) {
+let td = document.getElementById(id);
+td.innerHTML = data[id];
+td.querySelectorAll('.grade').forEach(span => {
+span.onclick = function() { openEditModal(this); };
+});
+}
+}
+document.querySelectorAll('#ocenaTabela td').forEach(td => {
+if (td.id.endsWith('_K')) {
+td.addEventListener('click', () => openKonecModal(td));
+}
+});
 }
 
 function openKonecModal(cell) {
-  currentKonecCell = cell;
-  let predmet = cell.id.split('_')[0];
-  let sum = 0, count = 0;
-  ['1','2'].forEach(polletje => {
-    document.querySelectorAll(`#${predmet}_${polletje} .grade`).forEach(span => {
-      let val = parseInt(span.innerText);
-      if(!isNaN(val)) { sum += val; count++; }
-    });
-  });
-  let avg = count ? (sum/count).toFixed(2) : 'Ni ocen';
-  document.getElementById('avgResult').innerText = avg;
-  document.getElementById('konecModal').style.display = 'block';
+currentKonecCell = cell;
+let predmet = cell.id.split('_')[0];
+let sum = 0, count = 0;
+['1','2'].forEach(polletje => {
+document.querySelectorAll(#${predmet}_${polletje} .grade).forEach(span => {
+let val = parseInt(span.innerText);
+if(!isNaN(val)) { sum += val; count++; }
+});
+});
+let avg = count ? (sum/count).toFixed(2) : 'Ni ocen';
+document.getElementById('avgResult').innerText = avg;
+document.getElementById('konecModal').style.display = 'block';
 }
 
 function closeKonecModal() {
-  document.getElementById('konecModal').style.display = 'none';
+document.getElementById('konecModal').style.display = 'none';
 }
 
 function setKonecGrade(grade) {
-  currentKonecCell.innerHTML = `<span class='final-grade'>${grade}</span>`;
-  currentKonecCell.onclick = () => openKonecModal(currentKonecCell);
-  saveToStorage();
-  closeKonecModal();
+currentKonecCell.innerHTML = <span class='final-grade'>${grade}</span>;
+saveToStorage();
+closeKonecModal();
 }
 </script>
 
-</body>
-</html>
+</body> </html>
