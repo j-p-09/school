@@ -13,8 +13,8 @@
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     td, th { border: 1px solid #ccc; padding: 8px; position: relative; text-align: left; vertical-align: top; }
     .grade-box {
-      width: 18px; height: 18px; border: 2px solid #555; 
-      background-color: #444; position: absolute; bottom: 2px; right: 2px;
+      width: 18px; height: 18px; border: 2px solid #333; 
+      background-color: #222; position: absolute; bottom: 2px; right: 2px;
       cursor: pointer;
     }
     .unsaved { background-color: #c5f3c5 !important; }
@@ -78,8 +78,7 @@
     if (user === 'jp09') {
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').style.display = 'block';
-      populateSelector();
-      renderTable();
+      switchView('predmetni'); // ← ključen popravek
     } else {
       document.getElementById('login-error').textContent = 'Nepravilno uporabniško ime';
     }
