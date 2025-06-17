@@ -7,22 +7,28 @@
     body { font-family: Arial, sans-serif; padding: 20px; }
     #login { max-width: 300px; margin: auto; }
     #app { display: none; }
-    .toolbar { display: flex; gap: 10px; margin-bottom: 10px; }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
     select, button { padding: 5px; }
     .active-view { font-weight: bold; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    td, th { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    .grade-input { width: 30px; background-color: #eee; border: none; }
-    .unsaved { background-color: #c5f3c5; }
+    td, th { border: 1px solid #ccc; padding: 8px; position: relative; text-align: left; vertical-align: top; }
+    .grade-box {
+      width: 18px; height: 18px; border: 2px solid #555; 
+      background-color: #444; position: absolute; bottom: 2px; right: 2px;
+      cursor: pointer;
+    }
+    .unsaved { background-color: #c5f3c5 !important; }
     .saved { transition: background-color 1s ease; }
     .modal { display: none; position: fixed; top: 50%; left: 50%; 
              transform: translate(-50%, -50%); background: white; 
-             padding: 20px; box-shadow: 0 0 10px black; }
+             padding: 20px; box-shadow: 0 0 10px black; z-index: 999; width: 300px; }
     .modal.active { display: block; }
-    .grade-type-btn { font-weight: bold; padding: 5px 10px; }
-    .grade-pisna { color: red; }
-    .grade-ustna { color: blue; }
-    .grade-izdelek { color: green; }
+    .grade-type-btn { font-weight: bold; padding: 5px 10px; border: 2px solid transparent; }
+    .selected-grade-type { border-color: black !important; }
+    .grade-pisna { color: red; font-weight: bold; }
+    .grade-ustna { color: blue; font-weight: bold; }
+    .grade-izdelek { color: green; font-weight: bold; }
+    .grade-entry { display: inline-block; margin-right: 5px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -40,27 +46,31 @@
     <button onclick="switchView('osebni')" id="btn-osebni">Osebni</button>
     <select id="selector" onchange="renderTable()"></select>
 
-    <button class="grade-type-btn grade-pisna" onclick="setGradeType('pisna')">PISNA</button>
-    <button class="grade-type-btn grade-ustna" onclick="setGradeType('ustna')">USTNA</button>
-    <button class="grade-type-btn grade-izdelek" onclick="setGradeType('izdelek')">IZDELEK</button>
+    <button id="btn-pisna" class="grade-type-btn grade-pisna" onclick="setGradeType('pisna')">PISNA</button>
+    <button id="btn-ustna" class="grade-type-btn grade-ustna" onclick="setGradeType('ustna')">USTNA</button>
+    <button id="btn-izdelek" class="grade-type-btn grade-izdelek" onclick="setGradeType('izdelek')">IZDELEK</button>
   </div>
 
   <div id="table-container"></div>
 </div>
 
 <div class="modal" id="modal">
-  <label>Opomba: <input id="note" style="width: 100%;"></label><br><br>
-  <button onclick="saveGrade()">Shrani oceno</button>
+  <div id="modal-content">
+    <label>Ocena: <input id="grade-value" style="width: 100%;"></label><br><br>
+    <label>Opomba: <input id="note" style="width: 100%;"></label><br><br>
+    <button onclick="saveGrade()">Shrani oceno</button>
+  </div>
 </div>
 
 <script>
   let currentView = 'predmetni';
   let currentType = 'pisna';
   let selected = '';
-  let currentGradeCell = null;
+  let currentCellId = '';
+  let currentCell = null;
+
   const predmetList = ['Matematika', 'Slovenščina', 'Zgodovina'];
   const dijaki = ['Ana Novak', 'Miha Kralj', 'Luka Zupan'];
-
   const oceneData = JSON.parse(localStorage.getItem('oceneData')) || {};
 
   function login() {
@@ -69,7 +79,7 @@
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').style.display = 'block';
       populateSelector();
-      renderTable(); // Tabela se takoj prikaže po prijavi
+      renderTable();
     } else {
       document.getElementById('login-error').textContent = 'Nepravilno uporabniško ime';
     }
@@ -80,7 +90,7 @@
     document.getElementById('btn-predmetni').classList.toggle('active-view', view === 'predmetni');
     document.getElementById('btn-osebni').classList.toggle('active-view', view === 'osebni');
     populateSelector();
-    renderTable(); // <-- Tabela se osveži takoj ob preklopu pogleda
+    renderTable();
   }
 
   function populateSelector() {
@@ -98,6 +108,10 @@
 
   function setGradeType(type) {
     currentType = type;
+    ['pisna', 'ustna', 'izdelek'].forEach(t => {
+      document.getElementById('btn-' + t).classList.remove('selected-grade-type');
+    });
+    document.getElementById('btn-' + type).classList.add('selected-grade-type');
   }
 
   function renderTable() {
@@ -112,10 +126,13 @@
       html += `<tr><td>${entry}</td>`;
       ['1', '2'].forEach(period => {
         const id = currentView === 'predmetni' ? `${entry}_${selected}_${period}` : `${selected}_${entry}_${period}`;
-        const grade = oceneData[id]?.grade || '';
-        const type = oceneData[id]?.type || '';
-        const colorClass = type ? `grade-${type}` : '';
-        html += `<td><input class="grade-input ${colorClass}" data-id="${id}" value="${grade}" onkeydown="handleKey(event, this)"></td>`;
+        const cellData = oceneData[id] || [];
+        let content = '';
+        cellData.forEach((o, idx) => {
+          content += `<span class="grade-entry grade-${o.type}" onclick="showNote('${id}', ${idx})">${o.grade}</span>`;
+        });
+
+        html += `<td id="${id}">${content}<div class="grade-box" onclick="openGradeModal('${id}')"></div></td>`;
       });
       html += '<td></td></tr>';
     });
@@ -124,29 +141,38 @@
     container.innerHTML = html;
   }
 
-  function handleKey(e, input) {
-    if (e.key === 'Enter') {
-      currentGradeCell = input;
-      document.getElementById('note').value = '';
-      document.getElementById('modal').classList.add('active');
-    }
+  function openGradeModal(id) {
+    currentCellId = id;
+    currentCell = document.getElementById(id);
+    document.getElementById('grade-value').value = '';
+    document.getElementById('note').value = '';
+    document.getElementById('modal').classList.add('active');
   }
 
   function saveGrade() {
-    const id = currentGradeCell.dataset.id;
-    const grade = currentGradeCell.value;
-    const note = document.getElementById('note').value;
-    oceneData[id] = { grade, note, type: currentType };
+    const grade = document.getElementById('grade-value').value.trim();
+    const note = document.getElementById('note').value.trim();
+    if (!grade) return;
+
+    if (!oceneData[currentCellId]) oceneData[currentCellId] = [];
+    oceneData[currentCellId].push({ grade, note, type: currentType });
     localStorage.setItem('oceneData', JSON.stringify(oceneData));
+    renderTable();
 
-    currentGradeCell.classList.add(`grade-${currentType}`);
-    currentGradeCell.classList.add('unsaved');
-
-    setTimeout(() => {
-      currentGradeCell.classList.remove('unsaved');
-    }, 2000);
+    const cell = document.getElementById(currentCellId);
+    cell.classList.add('unsaved');
+    setTimeout(() => cell.classList.remove('unsaved'), 2000);
 
     document.getElementById('modal').classList.remove('active');
+  }
+
+  function showNote(id, idx) {
+    const o = oceneData[id]?.[idx];
+    if (o && o.note) {
+      alert(`Opomba: ${o.note}`);
+    } else {
+      alert('Ni opombe.');
+    }
   }
 </script>
 
