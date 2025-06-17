@@ -1,195 +1,153 @@
 <!DOCTYPE html>
 <html lang="sl">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Redovalnica</title>
   <style>
-    body { font-family: Arial; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #aaa; padding: 10px; text-align: center; }
-    th img { height: 20px; }
-    .pisna { color: red; font-weight: bold; }
-    .ustna { color: blue; font-weight: bold; }
-    .izdelek { color: purple; font-weight: bold; }
-    .ocena-box {
-      display: inline-block;
-      font-weight: bold;
-      margin: 2px;
-      padding: 6px 10px;
-      border-radius: 6px;
-      background: #eee;
-      cursor: pointer;
-    }
-    .ocena-box.pomanjsana { font-size: 0.7em; }
-    .popravek-box {
-      display: inline-block;
-      font-weight: bold;
-      margin: 2px;
-      padding: 6px 10px;
-      border-radius: 6px;
-      background: #ddd;
-      font-size: 0.85em;
-    }
-    .dialog-container {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      display: none; justify-content: center; align-items: center;
-      z-index: 10000; background: rgba(0, 0, 0, 0.6);
-    }
-    .dialog { background: white; padding: 20px; border-radius: 8px; width: 320px; position: relative; }
-    .close-btn { position: absolute; top: 8px; right: 12px; font-weight: bold; font-size: 18px; cursor: pointer; }
-    .editable { cursor: pointer; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #login { max-width: 300px; margin: auto; }
+    #app { display: none; }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 10px; }
+    select, button { padding: 5px; }
+    .active-view { font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    td, th { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    .grade-input { width: 30px; background-color: #eee; border: none; }
+    .unsaved { background-color: #c5f3c5; }
+    .saved { transition: background-color 1s ease; }
+    .modal { display: none; position: fixed; top: 50%; left: 50%; 
+             transform: translate(-50%, -50%); background: white; 
+             padding: 20px; box-shadow: 0 0 10px black; }
+    .modal.active { display: block; }
+    .grade-type-btn { font-weight: bold; padding: 5px 10px; }
+    .grade-pisna { color: red; }
+    .grade-ustna { color: blue; }
+    .grade-izdelek { color: green; }
   </style>
 </head>
 <body>
 
-<h2>Redovalnica</h2>
+<div id="login">
+  <h2>Prijava</h2>
+  <input id="username" placeholder="Uporabniško ime">
+  <button onclick="login()">Prijava</button>
+  <div id="login-error" style="color: red;"></div>
+</div>
 
-<table id="redovalnica">
-  <thead>
-    <tr>
-      <th>Predmet</th>
-      <th>A</th>
-      <th><img src="graja.png" alt="XK" /></th>
-      <th>B</th>
-      <th><img src="graja.png" alt="XK" /></th>
-      <th>Konec</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td>A1</td><td class="editable ocenaste" data-row="0" data-col="1"></td><td class="editable xk" data-row="0" data-col="2"></td><td class="editable ocenaste" data-row="0" data-col="3"></td><td class="editable xk" data-row="0" data-col="4"></td><td></td></tr>
-    <tr><td>A2</td><td class="editable ocenaste" data-row="1" data-col="1"></td><td class="editable xk" data-row="1" data-col="2"></td><td class="editable ocenaste" data-row="1" data-col="3"></td><td class="editable xk" data-row="1" data-col="4"></td><td></td></tr>
-    <tr><td>A3</td><td class="editable ocenaste" data-row="2" data-col="1"></td><td class="editable xk" data-row="2" data-col="2"></td><td class="editable ocenaste" data-row="2" data-col="3"></td><td class="editable xk" data-row="2" data-col="4"></td><td></td></tr>
-    <tr><td>A4</td><td class="editable ocenaste" data-row="3" data-col="1"></td><td class="editable xk" data-row="3" data-col="2"></td><td class="editable ocenaste" data-row="3" data-col="3"></td><td class="editable xk" data-row="3" data-col="4"></td><td></td></tr>
-    <tr><td>A5</td><td class="editable ocenaste" data-row="4" data-col="1"></td><td class="editable xk" data-row="4" data-col="2"></td><td class="editable ocenaste" data-row="4" data-col="3"></td><td class="editable xk" data-row="4" data-col="4"></td><td></td></tr>
-  </tbody>
-</table>
+<div id="app">
+  <div class="toolbar">
+    <button onclick="switchView('predmetni')" id="btn-predmetni">Predmetni</button>
+    <button onclick="switchView('osebni')" id="btn-osebni">Osebni</button>
+    <select id="selector" onchange="renderTable()"></select>
 
-<div id="dialog-container" class="dialog-container"></div>
+    <button class="grade-type-btn grade-pisna" onclick="setGradeType('pisna')">PISNA</button>
+    <button class="grade-type-btn grade-ustna" onclick="setGradeType('ustna')">USTNA</button>
+    <button class="grade-type-btn grade-izdelek" onclick="setGradeType('izdelek')">IZDELEK</button>
+  </div>
+
+  <div id="table-container"></div>
+</div>
+
+<div class="modal" id="modal">
+  <label>Opomba: <input id="note" style="width: 100%;"></label><br><br>
+  <button onclick="saveGrade()">Shrani oceno</button>
+</div>
 
 <script>
-let oceneData = JSON.parse(localStorage.getItem('oceneData') || '{}');
-const dialogContainer = document.getElementById('dialog-container');
+  let currentView = 'predmetni';
+  let currentType = 'pisna';
+  let selected = '';
+  let currentGradeCell = null;
+  const predmetList = ['Matematika', 'Slovenščina', 'Zgodovina'];
+  const dijaki = ['Ana Novak', 'Miha Kralj', 'Luka Zupan'];
 
-// Shrani v localStorage
-function shraniLocal() {
-  localStorage.setItem('oceneData', JSON.stringify(oceneData));
-}
+  const oceneData = JSON.parse(localStorage.getItem('oceneData')) || {};
 
-// Odpri dialog za vpis nove ocene
-function openOcenaDialog(cell) {
-  const row = cell.dataset.row;
-  const col = cell.dataset.col;
-  dialogContainer.style.display = 'flex';
-  dialogContainer.innerHTML = `
-    <div class="dialog">
-      <span class="close-btn" onclick="zapri()">✖</span>
-      <h3>Vpiši oceno</h3>
-      <label><input type="radio" name="tip" value="pisna"> Pisna</label>
-      <label><input type="radio" name="tip" value="ustna"> Ustna</label>
-      <label><input type="radio" name="tip" value="izdelek"> Izdelek</label><br><br>
-      Ocena: <input id="vnosOcena"><br><br>
-      Opombe: <textarea id="vnosOpombe"></textarea><br><br>
-      <button onclick="shraniOceno(${row}, ${col})">Shrani</button>
-    </div>`;
-}
+  function login() {
+    const user = document.getElementById('username').value;
+    if (user === 'jp09') {
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      populateSelector();
+      renderTable(); // Tabela se takoj prikaže po prijavi
+    } else {
+      document.getElementById('login-error').textContent = 'Nepravilno uporabniško ime';
+    }
+  }
 
-// Shrani novo oceno
-function shraniOceno(row, col) {
-  const tip = document.querySelector('input[name="tip"]:checked')?.value;
-  const ocena = document.getElementById('vnosOcena').value.trim();
-  const opombe = document.getElementById('vnosOpombe').value.trim();
-  if (!tip || !ocena) { alert("Izpolni vsa polja!"); return; }
-  const key = `${row}_${col}`;
-  oceneData[key] = { tip, ocena, opombe, datum: new Date().toLocaleDateString(), popravki: [] };
-  shraniLocal();
-  prikaziOcene();
-  zapri();
-}
+  function switchView(view) {
+    currentView = view;
+    document.getElementById('btn-predmetni').classList.toggle('active-view', view === 'predmetni');
+    document.getElementById('btn-osebni').classList.toggle('active-view', view === 'osebni');
+    populateSelector();
+    renderTable(); // <-- Tabela se osveži takoj ob preklopu pogleda
+  }
 
-// Prikaz ocen v tabeli
-function prikaziOcene() {
-  document.querySelectorAll('#redovalnica tbody tr').forEach((tr, r) => {
-    tr.querySelectorAll('td.editable.ocenaste').forEach((td, cIdx) => {
-      const col = td.dataset.col;
-      const key = `${r}_${col}`;
-      td.innerHTML = '';
-      if (oceneData[key]) {
-        const glavna = document.createElement('span');
-        glavna.className = `ocena-box ${oceneData[key].tip} ${oceneData[key].popravki.length ? 'pomanjsana' : ''}`;
-        glavna.innerText = oceneData[key].ocena;
-        glavna.onclick = () => urediOceno(r, col);
-        td.appendChild(glavna);
-        oceneData[key].popravki.forEach((pop, i) => {
-          const popravek = document.createElement('span');
-          popravek.className = "popravek-box";
-          popravek.innerText = pop.ocena;
-          td.appendChild(popravek);
-        });
-      }
+  function populateSelector() {
+    const sel = document.getElementById('selector');
+    sel.innerHTML = '';
+    const list = currentView === 'predmetni' ? predmetList : dijaki;
+    list.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item;
+      opt.textContent = item;
+      sel.appendChild(opt);
     });
-  });
-}
+    selected = list[0];
+  }
 
-// Uredi že vpisano oceno
-function urediOceno(row, col) {
-  const key = `${row}_${col}`;
-  const o = oceneData[key];
-  let popSeznam = '';
-  o.popravki.forEach((p, i) => {
-    popSeznam += `<div style="margin:4px 0">
-      ${p.ocena} (${p.datum}) - ${p.komentar || '-'}
-      <button onclick="izbrisiPopravek(${row},${col},${i})">🗑</button>
-    </div>`;
-  });
+  function setGradeType(type) {
+    currentType = type;
+  }
 
-  dialogContainer.style.display = 'flex';
-  dialogContainer.innerHTML = `
-    <div class="dialog">
-      <span class="close-btn" onclick="zapri()">✖</span>
-      <h3>Uredi oceno</h3>
-      <div class="ocena-box">${o.ocena}</div>
-      <p>Opombe: ${o.opombe || '-'}</p>
-      <h4>Popravki</h4>${popSeznam}
-      <h4>Dodaj popravek</h4>
-      Ocena: <input id="popravekOcena"><br>
-      Komentar: <input id="popravekKomentar"><br><br>
-      <button onclick="shraniPopravek(${row},${col})">Dodaj</button>
-    </div>`;
-}
+  function renderTable() {
+    selected = document.getElementById('selector').value;
+    const container = document.getElementById('table-container');
+    let html = '<table><tr><th>' + (currentView === 'predmetni' ? 'Dijak' : 'Predmet') +
+               '</th><th>Prvo obdobje</th><th>Drugo obdobje</th><th>Konec</th></tr>';
 
-// Shrani popravek
-function shraniPopravek(row, col) {
-  const val = document.getElementById('popravekOcena').value.trim();
-  const kom = document.getElementById('popravekKomentar').value.trim();
-  if (!val) { alert('Vnesi popravljeno oceno.'); return; }
-  const key = `${row}_${col}`;
-  oceneData[key].popravki.push({ ocena: val, komentar: kom, datum: new Date().toLocaleDateString() });
-  shraniLocal();
-  prikaziOcene();
-  zapri();
-}
+    const list = currentView === 'predmetni' ? dijaki : predmetList;
 
-// Izbriši posamezen popravek
-function izbrisiPopravek(row, col, idx) {
-  const key = `${row}_${col}`;
-  oceneData[key].popravki.splice(idx, 1);
-  shraniLocal();
-  prikaziOcene();
-  urediOceno(row, col);
-}
+    list.forEach(entry => {
+      html += `<tr><td>${entry}</td>`;
+      ['1', '2'].forEach(period => {
+        const id = currentView === 'predmetni' ? `${entry}_${selected}_${period}` : `${selected}_${entry}_${period}`;
+        const grade = oceneData[id]?.grade || '';
+        const type = oceneData[id]?.type || '';
+        const colorClass = type ? `grade-${type}` : '';
+        html += `<td><input class="grade-input ${colorClass}" data-id="${id}" value="${grade}" onkeydown="handleKey(event, this)"></td>`;
+      });
+      html += '<td></td></tr>';
+    });
 
-function zapri() {
-  dialogContainer.style.display = 'none';
-  dialogContainer.innerHTML = '';
-}
+    html += '</table>';
+    container.innerHTML = html;
+  }
 
-// Aktivacija na klik
-document.querySelectorAll('.editable.ocenaste').forEach(cell => {
-  cell.addEventListener('click', () => openOcenaDialog(cell));
-});
+  function handleKey(e, input) {
+    if (e.key === 'Enter') {
+      currentGradeCell = input;
+      document.getElementById('note').value = '';
+      document.getElementById('modal').classList.add('active');
+    }
+  }
 
-// Ob zagonu prikaži shranjene ocene
-prikaziOcene();
+  function saveGrade() {
+    const id = currentGradeCell.dataset.id;
+    const grade = currentGradeCell.value;
+    const note = document.getElementById('note').value;
+    oceneData[id] = { grade, note, type: currentType };
+    localStorage.setItem('oceneData', JSON.stringify(oceneData));
+
+    currentGradeCell.classList.add(`grade-${currentType}`);
+    currentGradeCell.classList.add('unsaved');
+
+    setTimeout(() => {
+      currentGradeCell.classList.remove('unsaved');
+    }, 2000);
+
+    document.getElementById('modal').classList.remove('active');
+  }
 </script>
 
 </body>
