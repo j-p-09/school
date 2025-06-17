@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="sl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Redovalnica</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
@@ -13,30 +13,31 @@
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     td, th { border: 1px solid #ccc; padding: 8px; position: relative; text-align: left; vertical-align: top; }
     .grade-box {
-      width: 18px; height: 18px; border: 2px solid #333; 
-      background-color: rgba(50, 50, 50, 0.3); position: absolute; bottom: 2px; right: 2px;
-      cursor: pointer;
+      width: 20px; height: 20px; border: 2px solid #333;
+      background-color: rgba(50, 50, 50, 0.3);
+      position: absolute; bottom: 2px; right: 2px;
+      cursor: pointer; font-weight: bold; font-size: 16px; line-height: 18px; 
+      text-align: center; color: white; user-select: none;
     }
     .unsaved { background-color: #c5f3c5 !important; }
     .saved { transition: background-color 1s ease; }
-    .modal { display: none; position: fixed; top: 50%; left: 50%; 
-             transform: translate(-50%, -50%); background: white; 
+    .modal { display: none; position: fixed; top: 50%; left: 50%;
+             transform: translate(-50%, -50%); background: white;
              padding: 20px; box-shadow: 0 0 10px black; z-index: 999; width: 300px; }
     .modal.active { display: block; }
-    .grade-type-btn { font-weight: bold; padding: 5px 10px; border: 2px solid transparent; }
+    .grade-type-btn { font-weight: bold; padding: 5px 10px; border: 2px solid transparent; cursor: pointer; }
     .selected-grade-type { border-color: black !important; }
     .grade-pisna { color: red; font-weight: bold; }
     .grade-ustna { color: blue; font-weight: bold; }
     .grade-izdelek { color: green; font-weight: bold; }
     .grade-entry { display: inline-block; margin-right: 5px; cursor: pointer; font-weight: bold; }
-    .final-grade { font-weight: bold; font-size: 1.1em; color: black; cursor: pointer; }
   </style>
 </head>
 <body>
 
 <div id="login">
   <h2>Prijava</h2>
-  <input id="username" placeholder="Uporabniško ime">
+  <input id="username" placeholder="Uporabniško ime" />
   <button onclick="login()">Prijava</button>
   <div id="login-error" style="color: red;"></div>
 </div>
@@ -57,9 +58,10 @@
 
 <div class="modal" id="modal">
   <div id="modal-content">
-    <label>Ocena: <input id="grade-value" style="width: 100%;"></label><br><br>
-    <label>Opomba: <input id="note" style="width: 100%;"></label><br><br>
+    <label>Ocena: <input id="grade-value" style="width: 100%;" maxlength="2" autocomplete="off" /></label><br /><br />
+    <label>Opomba: <input id="note" style="width: 100%;" autocomplete="off" /></label><br /><br />
     <button onclick="saveGrade()">Shrani oceno</button>
+    <button onclick="closeModal()">Prekliči</button>
   </div>
 </div>
 
@@ -71,32 +73,24 @@
   </div>
 </div>
 
-<div class="modal" id="final-modal">
-  <div id="final-modal-content">
-    <label>Končna ocena: <input id="final-grade-input" style="width: 100%;"></label><br><br>
-    <button onclick="saveFinalGrade()">Shrani končno oceno</button>
-  </div>
-</div>
-
 <script>
   let currentView = 'predmetni';
   let currentType = 'pisna';
   let selected = '';
   let currentCellId = '';
-  let currentCell = null;
   let selectedGradeIndex = null;
-  let finalGradeId = '';
 
   const predmetList = ['Matematika', 'Slovenščina', 'Zgodovina'];
   const dijaki = ['Ana Novak', 'Miha Kralj', 'Luka Zupan'];
-  const oceneData = JSON.parse(localStorage.getItem('oceneData')) || {};
-  const finalGrades = JSON.parse(localStorage.getItem('finalGrades')) || {};
+  let oceneData = JSON.parse(localStorage.getItem('oceneData')) || {};
+  let finalGrades = JSON.parse(localStorage.getItem('finalGrades')) || {};
 
   function login() {
     const user = document.getElementById('username').value;
     if (user === 'jp09') {
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').style.display = 'block';
+      setGradeType('pisna');
       switchView('predmetni');
     } else {
       document.getElementById('login-error').textContent = 'Nepravilno uporabniško ime';
@@ -122,6 +116,7 @@
       sel.appendChild(opt);
     });
     selected = list[0];
+    sel.value = selected;
   }
 
   function setGradeType(type) {
@@ -149,11 +144,12 @@
         cellData.forEach((o, idx) => {
           content += `<span class="grade-entry grade-${o.type}" onclick="showNote('${id}', ${idx})">${o.grade}</span>`;
         });
-        html += `<td id="${id}">${content}<div class="grade-box" onclick="openGradeModal('${id}')"></div></td>`;
+        html += `<td id="${id}">${content}<div class="grade-box" onclick="openGradeModal('${id}')">+</div></td>`;
       });
-      const finalId = currentView === 'predmetni' ? `${entry}_${selected}_final` : `${selected}_${entry}_final`;
-      const finalVal = finalGrades[finalId] ? `<span class="final-grade" onclick="editFinal('${finalId}')">${finalGrades[finalId]}</span>` : `<span class="final-grade" onclick="editFinal('${finalId}')">-</span>`;
-      html += `<td>${finalVal}</td></tr>`;
+      const finalKey = currentView === 'predmetni' ? entry : selected;
+      let finalGrade = finalGrades[finalKey];
+      if (!finalGrade) finalGrade = calculateFinal(entry);
+      html += `<td id="final_${finalKey}" onclick="openFinalModal('${finalKey}')">${finalGrade}</td></tr>`;
     });
 
     html += '</table>';
@@ -162,16 +158,37 @@
 
   function openGradeModal(id) {
     currentCellId = id;
-    currentCell = document.getElementById(id);
     document.getElementById('grade-value').value = '';
     document.getElementById('note').value = '';
     document.getElementById('modal').classList.add('active');
+    document.getElementById('grade-value').focus();
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('active');
   }
 
   function saveGrade() {
     const grade = document.getElementById('grade-value').value.trim();
     const note = document.getElementById('note').value.trim();
-    if (!grade) return;
+
+    if (!grade) {
+      closeModal();
+      return;
+    }
+
+    if (currentCellId.startsWith('final_')) {
+      finalGrades[currentCellId.replace('final_', '')] = grade;
+      localStorage.setItem('finalGrades', JSON.stringify(finalGrades));
+      const cell = document.getElementById(currentCellId);
+      if (cell) {
+        cell.textContent = grade;
+        cell.style.fontWeight = '900';
+        cell.style.color = 'black';
+      }
+      closeModal();
+      return;
+    }
 
     if (!oceneData[currentCellId]) oceneData[currentCellId] = [];
     oceneData[currentCellId].push({ grade, note, type: currentType });
@@ -182,7 +199,7 @@
     cell.classList.add('unsaved');
     setTimeout(() => cell.classList.remove('unsaved'), 2000);
 
-    document.getElementById('modal').classList.remove('active');
+    closeModal();
   }
 
   function showNote(id, idx) {
@@ -207,36 +224,28 @@
     closeNoteModal();
   }
 
-  function editFinal(id) {
-    finalGradeId = id;
-    document.getElementById('final-grade-input').value = calculateAverageFromId(id);
-    document.getElementById('final-modal').classList.add('active');
-  }
-
-  function saveFinalGrade() {
-    const val = document.getElementById('final-grade-input').value.trim();
-    if (!val) return;
-    finalGrades[finalGradeId] = val;
-    localStorage.setItem('finalGrades', JSON.stringify(finalGrades));
-    renderTable();
-    document.getElementById('final-modal').classList.remove('active');
-  }
-
-  function calculateAverageFromId(id) {
-    const parts = id.split('_');
-    const name = parts[0];
-    const subject = parts[1];
+  function calculateFinal(entry) {
     let allGrades = [];
+    const name = currentView === 'predmetni' ? entry : selected;
+    const predmet = currentView === 'predmetni' ? selected : entry;
 
     ['1', '2'].forEach(period => {
-      const cellId = `${name}_${subject}_${period}`;
-      const grades = oceneData[cellId]?.map(g => parseInt(g.grade)).filter(n => !isNaN(n)) || [];
+      const id = `${name}_${predmet}_${period}`;
+      const grades = oceneData[id]?.map(g => parseInt(g.grade)).filter(n => !isNaN(n)) || [];
       allGrades = allGrades.concat(grades);
     });
 
-    if (allGrades.length === 0) return '';
+    if (allGrades.length === 0) return '-';
     const avg = allGrades.reduce((a, b) => a + b, 0) / allGrades.length;
     return avg.toFixed(2);
+  }
+
+  function openFinalModal(key) {
+    currentCellId = `final_${key}`;
+    document.getElementById('grade-value').value = finalGrades[key] || '';
+    document.getElementById('note').value = '';
+    document.getElementById('modal').classList.add('active');
+    document.getElementById('grade-value').focus();
   }
 </script>
 
