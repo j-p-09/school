@@ -13,9 +13,15 @@
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     td, th { border: 1px solid #ccc; padding: 8px; position: relative; text-align: left; vertical-align: top; }
     .grade-box {
-      width: 18px; height: 18px; border: 2px solid #333;
-      background-color: rgba(50, 50, 50, 0.1); position: absolute; bottom: 2px; right: 2px;
+      font-weight: bold;
+      font-size: 14px;
+      color: black;
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
       cursor: pointer;
+      background: none;
+      border: none;
     }
     .unsaved { background-color: #c5f3c5 !important; }
     .saved { transition: background-color 1s ease; }
@@ -30,6 +36,7 @@
     .grade-izdelek { color: green; font-weight: bold; }
     .grade-entry { display: inline-block; margin-right: 5px; cursor: pointer; font-weight: bold; }
     .final-grade { font-weight: bold; font-size: 1.1em; color: black; cursor: pointer; }
+    .smaller-grade { font-size: 0.8em; }
   </style>
 </head>
 <body>
@@ -86,12 +93,11 @@
   let currentType = 'pisna';
   let selected = '';
   let currentCellId = '';
-  let currentCell = null;
   let selectedGradeIndex = null;
   let finalGradeId = '';
 
-  const predmetList = ['Matematika', 'Slovenščina', 'Zgodovina'];
-  const dijaki = ['Ana Novak', 'Miha Kralj', 'Luka Zupan'];
+  const predmetList = ['Matematika', 'Slovenščina', 'Zgodovina', 'Fizika', 'Kemija'];
+  const dijaki = ['Ana Novak', 'Miha Kralj', 'Luka Zupan', 'Tina Kovač', 'Jure Mlakar', 'Eva Dolenc', 'Marko Bizjak', 'Nina Potočnik', 'Zala Horvat', 'Rok Štern'];
   const oceneData = JSON.parse(localStorage.getItem('oceneData')) || {};
   const finalGrades = JSON.parse(localStorage.getItem('finalGrades')) || {};
 
@@ -150,7 +156,8 @@
         const cellData = oceneData[id] || [];
         let content = '';
         cellData.forEach((o, idx) => {
-          content += `<span class="grade-entry grade-${o.type}" onclick="showNote('${id}', ${idx})">${o.grade}</span>`;
+          const sizeClass = o.smaller ? 'smaller-grade' : '';
+          content += `<span class="grade-entry grade-${o.type} ${sizeClass}" onclick="showNote('${id}', ${idx})">${o.grade}</span>`;
         });
         html += `<td id="${id}">${content}<div class="grade-box" onclick="openGradeModal('${id}')">+</div></td>`;
       });
@@ -165,7 +172,6 @@
 
   function openGradeModal(id) {
     currentCellId = id;
-    currentCell = document.getElementById(id);
     document.getElementById('grade-value').value = '';
     document.getElementById('note').value = '';
     document.getElementById('modal').classList.add('active');
@@ -214,6 +220,7 @@
     let newGrade = parseInt(gradeObj.grade);
     if (!isNaN(newGrade) && newGrade > 1) {
       gradeObj.grade = (newGrade - 1).toString();
+      gradeObj.smaller = true;
       localStorage.setItem('oceneData', JSON.stringify(oceneData));
       renderTable();
     }
