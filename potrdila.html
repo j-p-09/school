@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Generator potrdil o ocenah</title>
+  <style>
+    body{font-family: Arial, sans-serif; padding:20px; background:#f7f7f7}
+    .card{background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);max-width:900px;margin:0 auto}
+    label{display:block;margin-top:10px;font-weight:600}
+    input, select{width:100%;padding:8px;margin-top:6px;border:1px solid #ccc;border-radius:4px}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    button{margin-top:14px;padding:10px 16px;border:0;border-radius:6px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer}
+    small{color:#666}
+    .saved{margin-top:16px}
+    .saved li{padding:6px 0;border-bottom:1px solid #eee}
+  </style>
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div class="card">
+    <h2>Generator: POTRDILO O PRIDOBLJENI OCENI</h2>
+    <p>Vpišite podatke spodaj. Ko so podatki veljavni, se avtomatsko ustvari in prenese PDF potrdilo. Podatki se prav tako shranijo v lokalni sistem (localStorage).</p>
+
+    <label>Šifra učenca</label>
+    <input id="studentCode" placeholder="npr. 2021-AB-001" />
+
+    <label>Tip ocene</label>
+    <select id="gradeType">
+      <option value="PISNA OCENA">PISNA OCENA</option>
+      <option value="USTNA OCENA">USTNA OCENA</option>
+      <option value="IZDELEK">IZDELEK</option>
+      <option value="KONČNA OCENA">KONČNA OCENA</option>
+    </select>
+
+    <div class="row">
+      <div class="col">
+        <label>Dosežene točke</label>
+        <input id="pointsGot" type="number" min="0" step="0.01" placeholder="npr. 78" />
+      </div>
+      <div class="col">
+        <label>Možne točke</label>
+        <input id="pointsMax" type="number" min="0.01" step="0.01" placeholder="npr. 100" />
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <button id="downloadBtn">Prenesi PDF (ročno)</button>
+      <small style="display:block;margin-top:8px">Opomba: PDF avtomatsko prenese, ko so vhodni podatki veljavni in se spremenijo.</small>
+    </div>
+
+    <div class="saved">
+      <h4>Shranjena potrdila v sistemu (localStorage)</h4>
+      <ul id="savedList"></ul>
+    </div>
+  </div>
+
+  <script>
+    // Uporabimo jsPDF iz uglobalnega jspdf modula
+    const { jsPDF } = window.jspdf;
+
+    const studentCode = document.getElementById('studentCode');
+    const gradeType = document.getElementById('gradeType');
+    const pointsGot = document.getElementById('pointsGot');
+    const pointsMax = document.getElementById('pointsMax');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const savedList = document.getElementById('savedList');
+
+    // Debounce za avtomatsko generiranje (da se ne sproži prehitro ob vsakem tipu)
+    function debounce(fn, delay){
+      let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), delay); }
+    }
+
+    function calcPercentAndGrade(got, max){
+      if (max <= 0) return null;
+      const pct = (got / max) * 100;
+      const pctClamped = Math.max(0, Math.min(100, pct));
+      const pctRound = Math.round(pctClamped);
+      let gradeLabel = '';
+      // 0-44% - nzd (1)
+      // 45-59% - zd (2)
+      // 60-75% - db (3)
+      // 76-89% - pdb (4)
+      // 90-100% - odl (5)
+      if (pctClamped <= 44) gradeLabel = 'nzd (1)';
+      else if (pctClamped <= 59) gradeLabel = 'zd (2)';
+      else if (pctClamped <= 75) gradeLabel = 'db (3)';
+      else if (pctClamped <= 89) gradeLabel = 'pdb (4)';
+      else gradeLabel = 'odl (5)';
+      return { pct: pctRound, grade: gradeLabel };
+    }
+
+    function validInputs(){
+      const code = studentCode.value.trim();
+      const got = parseFloat(pointsGot.value);
+      const max = parseFloat(pointsMax.value);
+      if (!code) return false;
+      if (Number.isNaN(got) || Number.isNaN(max)) return false;
+      if (max <= 0) return false;
+      if (got < 0) return false;
+      return true;
+    }
+
+    function saveEntry(entry){
+      const key = 'potrdila_ocen';
+      const arr = JSON.parse(localStorage.getItem(key) || '[]');
+      arr.unshift(entry); // newest first
+      // hranimo do 200 vnosov
+      if (arr.length > 200) arr.splice(200);
+      localStorage.setItem(key, JSON.stringify(arr));
+      renderSaved();
+    }
+
+    function renderSaved(){
+      const key = 'potrdila_ocen';
+      const arr = JSON.parse(localStorage.getItem(key) || '[]');
+      savedList.innerHTML = '';
+      if (arr.length === 0){
+        savedList.innerHTML = '<li>Ni shranjenih potrdil.</li>';
+        return;
+      }
+      arr.slice(0,50).forEach(item=>{
+        const li = document.createElement('li');
+        li.textContent = `${item.timestamp} — ${item.studentCode} — ${item.gradeType} — ${item.pointsGot}/${item.pointsMax}`;
+        savedList.appendChild(li);
+      });
+    }
+
+    function generatePDFAndDownload(auto=false){
+      if (!validInputs()) return;
+      const code = studentCode.value.trim();
+      const type = gradeType.value;
+      const got = parseFloat(pointsGot.value);
+      const max = parseFloat(pointsMax.value);
+      const cg = calcPercentAndGrade(got, max);
+      if (!cg) return;
+
+      // Dokument v slogu uradnega dopisa. Besedilo si izmislimo.
+      const doc = new jsPDF({unit:'pt', format:'a4'});
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 72; // 1 inch
+
+      // Nastavimo pisavo Times New Roman (jsPDF podpira 'times')
+      doc.setFont('times', 'normal');
+      doc.setFontSize(12);
+
+      // Naslov
+      doc.setFont('times', 'bold');
+      doc.setFontSize(16);
+      doc.text('POTRDILO O PRIDOBLJENI OCENI', pageWidth/2, 100, {align:'center'});
+
+      // Datum in referenca (navadna pisava)
+      doc.setFont('times', 'normal');
+      doc.setFontSize(11);
+      const today = new Date();
+      const dateStr = today.toLocaleDateString('sl-SI');
+      doc.text(`Datum: ${dateStr}`, margin, 140);
+
+      // Uradni dopis - telo. Vstavimo vrednosti (te morajo biti KREPKE!)
+      const bodyYStart = 170;
+      const lineHeight = 18;
+      let y = bodyYStart;
+
+      function writeNormal(text){ doc.setFont('times','normal'); doc.setFontSize(12); doc.text(text, margin, y); y += lineHeight; }
+      function writeBoldInline(prefix, boldText){
+        // napišemo prefix v normal, nato boldText kot ločeno obliko. Ker jsPDF ne podpira inline rich text,
+        // izpišemo prefix in nato bold value s premikom na isto vrstico.
+        doc.setFont('times','normal'); doc.setFontSize(12);
+        const prefixWidth = doc.getTextWidth(prefix);
+        doc.text(prefix, margin, y);
+        doc.setFont('times','bold');
+        doc.text(boldText, margin + prefixWidth + 4, y);
+        doc.setFont('times','normal');
+        y += lineHeight;
+      }
+
+      writeNormal('Spoštovani,' );
+      writeNormal('');
+      writeNormal('S tem potrdilom izdajamo uradno potrdilo o pridobljeni oceni naslednjega učenca:');
+      writeBoldInline('Šifra učenca:', code);
+      writeBoldInline('Tip ocene:', type);
+      writeBoldInline('Dosežene točke:', String(got));
+      writeBoldInline('Možne točke:', String(max));
+      // Procenti in ocena se vidita samo v potrdilu
+      writeBoldInline('Doseženi %:', String(cg.pct) + '%');
+      writeBoldInline('Dodeljena ocena:', cg.grade);
+
+      writeNormal('');
+      writeNormal('Podrobnosti:');
+      writeNormal('- Ocena je izračunana glede na razmerje doseženih in možnih točk.');
+      writeNormal('- Pripadni percentil in opisna ocena (nzd, zd, db, pdb, odl) sta zapisana zgoraj.');
+
+      y += 6;
+      doc.text('S spoštovanjem,', margin, y); y += lineHeight*2;
+      doc.text('Ravnatelj/-ica ali pooblaščena oseba', margin, y);
+
+      // Natisnemo PDF
+      const fileName = `potrdilo_${code.replace(/\s+/g,'_')}_${(new Date()).toISOString().slice(0,10)}.pdf`;
+      doc.save(fileName);
+
+      // Shrani v lokalni sistem (localStorage) s časovnim žigom
+      const entry = {
+        timestamp: new Date().toLocaleString('sl-SI'),
+        studentCode: code,
+        gradeType: type,
+        pointsGot: got,
+        pointsMax: max,
+        percent: cg.pct,
+        grade: cg.grade
+      };
+      saveEntry(entry);
+
+      // Kadar je avtomatsko, potrdimo v konzoli (ne prikazujemo procentov v UI)
+      if (auto){
+        console.log('Avtomatsko preneseno:', fileName, entry);
+      }
+    }
+
+    // Avtomatsko sproži generiranje, kadar se vhodni podatki spremenijo in so veljavni
+    const autoGen = debounce(()=>{
+      if (validInputs()) generatePDFAndDownload(true);
+    }, 700);
+
+    [studentCode, gradeType, pointsGot, pointsMax].forEach(el=>{
+      el.addEventListener('input', autoGen);
+      // tudi onchange
+      el.addEventListener('change', autoGen);
+    });
+
+    downloadBtn.addEventListener('click', ()=>generatePDFAndDownload(false));
+
+    // Inicializacija
+    renderSaved();
+
+  </script>
+</body>
+</html>
