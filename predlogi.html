@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>eP - Predlogi</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root{font-family:Arial,Helvetica,sans-serif}
+    body{margin:0;padding:0;background:#f6f8fb;color:#111}
+    header{background:#2b6cb0;color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+    header h1{margin:0;font-size:18px}
+    nav{display:flex;gap:8px}
+    button.tab{background:#fff;color:#2b6cb0;border:none;padding:8px 12px;border-radius:6px;cursor:pointer}
+    button.tab.active{background:#ffeeba;color:#2b6cb0;font-weight:700}
+    main{padding:20px}
+    .card{background:#fff;padding:16px;border-radius:8px;box-shadow:0 1px 4px rgba(16,24,40,.06);max-width:900px}
+    label{display:block;margin-top:10px;font-weight:600}
+    input[type=text],textarea,select{width:100%;padding:8px;margin-top:6px;border:1px solid #d1d5db;border-radius:6px;font-size:14px}
+    textarea{min-height:120px;resize:vertical}
+    .row{display:flex;gap:12px}
+    .row .col{flex:1}
+    .muted{color:#6b7280;font-size:13px}
+    footer{margin-top:12px}
+    .list-item{padding:10px;border-bottom:1px solid #eef2f7;display:flex;justify-content:space-between;align-items:center}
+    .small{font-size:13px;color:#374151}
+    .btn{padding:8px 10px;border-radius:6px;border:none;cursor:pointer}
+    .btn.primary{background:#2b6cb0;color:#fff}
+    .btn.ghost{background:transparent;border:1px solid #cbd5e1}
+    .status{padding:6px 8px;border-radius:6px;font-weight:700}
+    .s-odobreno{background:#d1fae5;color:#065f46}
+    .s-obravnava{background:#fff3bf;color:#92400e}
+    .s-zavrnjeno{background:#ffd6d6;color:#7f1d1d}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>eP - Sistem predlogov</h1>
+    <nav>
+      <button class="tab active" data-target="dodaj">DODAJ</button>
+      <button class="tab" data-target="doloci">DOLOČI</button>
+      <button class="tab" data-target="arhiv">ARHIV</button>
+    </nav>
+  </header>
+  <main>
+    <!-- DODAJ -->
+    <section id="dodaj" class="card">
+      <h2>Dodaj predlog</h2>
+      <form id="form-predlog">
+        <label>ŠTEVILKA PREDLOGA:</label>
+        <div style="font-weight:800;font-size:16px; padding:8px 0;" id="br-predloga">--</div>
+
+        <label for="predlog-o">PREDLOG O:</label>
+        <input id="predlog-o" name="predlog-o" required />
+
+        <label for="dodeljen">DODELJEN (uč. podatki):</label>
+        <input id="dodeljen" name="dodeljen" placeholder="ime, razred, id ..." required />
+
+        <label for="razlog">RAZLOG:</label>
+        <textarea id="razlog" name="razlog" required></textarea>
+
+        <label for="dolocilo">DOLOČILO:</label>
+        <select id="dolocilo" name="dolocilo">
+          <option value="V OBRAVNAVO">V OBRAVNAVO</option>
+          <option value="ODOBRENO">ODOBRENO</option>
+          <option value="ZAVRNJENO">ZAVRNJENO</option>
+        </select>
+
+        <label for="podpis">PODPIS (začetnice):</label>
+        <input id="podpis" name="podpis" placeholder="npr. JP" required />
+
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn primary" type="submit">Shrani predlog</button>
+          <button class="btn ghost" type="button" id="clear-form">Počisti</button>
+        </div>
+      </form>
+      <footer class="muted">Ko je izbrana privolitev (ODOBRENO / ZAVRNJENO) se avtomatsko zgenerira odločba in predlog gre v ARHIV. Če ostane v &quot;V OBRAVNAVO&quot; ga lahko obdelate v zavihku DOLOČI.</footer>
+    </section>
+
+    <!-- DOLOČI -->
+    <section id="doloci" class="card" style="display:none;margin-top:16px">
+      <h2>V obravnavi — določitev</h2>
+      <div id="pending-list">
+        <!-- dinamika -->
+      </div>
+      <div class="muted" style="margin-top:8px">Kliknite na predlog, da odprete podrobnosti in izberete DOLOČILO.</div>
+    </section>
+
+    <!-- ARHIV -->
+    <section id="arhiv" class="card" style="display:none;margin-top:16px">
+      <h2>Arhiv</h2>
+      <div id="archive-list">
+        <!-- arhiv -->
+      </div>
+      <div class="muted" style="margin-top:8px">Prenesite generirane PDF datoteke ali si oglejte podrobnosti.</div>
+    </section>
+
+    <!-- Modal / detail -->
+    <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(2,6,23,0.5);align-items:center;justify-content:center;padding:20px">
+      <div style="background:#fff;padding:18px;border-radius:8px;max-width:760px;width:100%">
+        <div id="modal-body"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn ghost" id="close-modal">Zapri</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+<script>
+// -- PROSTORSKE FUNKCIJE: localStorage
+const STORAGE_KEY = 'ep_predlogi_v1';
+const COUNTER_KEY = 'ep_predlogi_counter_v1';
+
+function loadAll(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+function saveAll(arr){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+function nextNumber(){
+  let c = parseInt(localStorage.getItem(COUNTER_KEY) || '0',10);
+  c++;
+  localStorage.setItem(COUNTER_KEY, String(c));
+  return c.toString().padStart(4,'0');
+}
+
+// init UI
+const tabs = document.querySelectorAll('button.tab');
+const sections = { dodaj: document.getElementById('dodaj'), doloci: document.getElementById('doloci'), arhiv: document.getElementById('arhiv') };
+
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  const target = t.dataset.target;
+  Object.keys(sections).forEach(k=>sections[k].style.display = (k===target? 'block':'none'));
+  renderAll();
+}));
+
+// form
+const brElem = document.getElementById('br-predloga');
+const form = document.getElementById('form-predlog');
+const clearBtn = document.getElementById('clear-form');
+
+function prepareFormNumber(){
+  // if new counter not set, set ephemeral display
+  let c = localStorage.getItem(COUNTER_KEY) || '0';
+  const display = (parseInt(c,10)+1).toString().padStart(4,'0');
+  brElem.textContent = display;
+}
+prepareFormNumber();
+
+clearBtn.addEventListener('click',()=>{ form.reset(); prepareFormNumber(); });
+
+form.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const data = {
+    id: nextNumber(),
+    predlog_o: document.getElementById('predlog-o').value.trim(),
+    dodeljen: document.getElementById('dodeljen').value.trim(),
+    razlog: document.getElementById('razlog').value.trim(),
+    dolocilo: document.getElementById('dolocilo').value,
+    podpis: document.getElementById('podpis').value.trim(),
+    created_at: (new Date()).toISOString(),
+    pdf: null // will hold base64 data uri
+  };
+
+  const all = loadAll();
+
+  if(data.dolocilo === 'V OBRAVNAVO'){
+    // save as pending
+    data.status = 'PENDING';
+    all.push(data);
+    saveAll(all);
+    alert('Predlog shranjen kot V OBRAVNAVO.');
+  } else {
+    // approved or rejected -> archive + generate decision and pdf
+    data.status = (data.dolocilo === 'ODOBRENO') ? 'ODOBRENO' : 'ZAVRNJENO';
+    // create decision text
+    const decisionText = generateDecisionText(data);
+    // generate pdf
+    const pdfData = await generatePdf(data, decisionText);
+    data.pdf = pdfData;
+    all.push(data);
+    saveAll(all);
+    alert('Predlog shranjen v ARHIV in PDF je generiran.');
+  }
+
+  form.reset();
+  prepareFormNumber();
+  renderAll();
+});
+
+// render
+function renderAll(){
+  renderPending();
+  renderArchive();
+}
+
+function renderPending(){
+  const cont = document.getElementById('pending-list');
+  cont.innerHTML = '';
+  const all = loadAll().filter(x=>x.status === 'PENDING');
+  if(all.length===0){ cont.innerHTML = '<div class="muted">Ni predlogov v obravnavi.</div>'; return; }
+  all.forEach(item=>{
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    div.innerHTML = `<div>
+      <div style="font-weight:700">#${item.id} — ${escapeHtml(item.predlog_o)}</div>
+      <div class="small">Dodeljen: ${escapeHtml(item.dodeljen)} · Datum: ${new Date(item.created_at).toLocaleString('sl-SI')}</div>
+    </div>
+    <div>
+      <button class="btn ghost" data-id="${item.id}" onclick="openPending('${item.id}')">Odpri</button>
+    </div>`;
+    cont.appendChild(div);
+  });
+}
+
+function renderArchive(){
+  const cont = document.getElementById('archive-list');
+  cont.innerHTML = '';
+  const all = loadAll().filter(x=>x.status === 'ODOBRENO' || x.status === 'ZAVRNJENO');
+  if(all.length===0){ cont.innerHTML = '<div class="muted">Arhiv je prazen.</div>'; return; }
+  all.sort((a,b)=>b.id.localeCompare(a.id));
+  all.forEach(item=>{
+    const div = document.createElement('div');
+    div.className = 'list-item';
+    const statusClass = item.status === 'ODOBRENO' ? 's-odobreno' : 's-zavrnjeno';
+    const statusLabel = item.status === 'ODOBRENO' ? 'ODOBRENO' : 'ZAVRNJENO';
+    div.innerHTML = `<div>
+      <div style="font-weight:700">#${item.id} — ${escapeHtml(item.predlog_o)}</div>
+      <div class="small">${escapeHtml(item.dodeljen)} · ${new Date(item.created_at).toLocaleString('sl-SI')}</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="status ${statusClass}">${statusLabel}</div>
+      <button class="btn" onclick="downloadPdf('${item.id}')">Prenesi PDF</button>
+      <button class="btn ghost" onclick="viewDetail('${item.id}')">Podrobnosti</button>
+    </div>`;
+    cont.appendChild(div);
+  });
+}
+
+// modal helpers
+window.viewDetail = function(id){
+  const all = loadAll();
+  const item = all.find(x=>x.id===id);
+  if(!item) return alert('Ne najdem zapisa.');
+  const body = document.getElementById('modal-body');
+  body.innerHTML = `
+    <h3>#${item.id} — ${escapeHtml(item.predlog_o)}</h3>
+    <div class="small">Dodeljen: ${escapeHtml(item.dodeljen)} · ${new Date(item.created_at).toLocaleString('sl-SI')}</div>
+    <p><strong>Razlog:</strong><br>${nl2br(escapeHtml(item.razlog))}</p>
+    <p><strong>DOLOČILO:</strong> ${item.dolocilo || item.status}</p>
+    <p><strong>PODPIS:</strong> ${escapeHtml(item.podpis)}</p>
+    <div style="margin-top:8px">${item.pdf ? '<em>PDF je priložen v arhivu.</em>' : '<em>PDF še ni generiran.</em>'}</div>
+  `;
+  showModal();
+}
+
+function showModal(){
+  const m = document.getElementById('modal');
+  m.style.display = 'flex';
+}
+
+document.getElementById('close-modal').addEventListener('click',()=>{
+  document.getElementById('modal').style.display = 'none';
+});
+
+// open pending detail with decision controls
+window.openPending = function(id){
+  const all = loadAll();
+  const item = all.find(x=>x.id===id);
+  if(!item) return alert('Ne najdem zapisa.');
+  const body = document.getElementById('modal-body');
+  body.innerHTML = `
+    <h3>#${item.id} — ${escapeHtml(item.predlog_o)}</h3>
+    <div class="small">Dodeljen: ${escapeHtml(item.dodeljen)} · ${new Date(item.created_at).toLocaleString('sl-SI')}</div>
+    <p><strong>Razlog:</strong><br>${nl2br(escapeHtml(item.razlog))}</p>
+    <p><label>Izberite odločitev:</label>
+      <select id="decide-select">
+        <option value="ODOBRENO">ODOBRENO</option>
+        <option value="ZAVRNJENO">ZAVRNJENO</option>
+      </select>
+    </p>
+    <p><label>Podpis (začetnice):</label><input id="decide-podpis" value="${escapeHtml(item.podpis)}" /></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn primary" id="apply-decision">Potrdi in shrani v arhiv</button>
+      <button class="btn ghost" id="close-modal-2">Prekliči</button>
+    </div>
+  `;
+  showModal();
+
+  document.getElementById('close-modal-2').addEventListener('click',()=>{ document.getElementById('modal').style.display='none'; });
+  document.getElementById('apply-decision').addEventListener('click', async ()=>{
+    const sel = document.getElementById('decide-select').value;
+    const podpis = document.getElementById('decide-podpis').value.trim();
+    // update
+    item.dolocilo = sel;
+    item.podpis = podpis;
+    item.status = (sel === 'ODOBRENO') ? 'ODOBRENO' : 'ZAVRNJENO';
+    // decision text + generate pdf
+    const decisionText = generateDecisionText(item);
+    const pdfData = await generatePdf(item, decisionText);
+    item.pdf = pdfData;
+    const all2 = loadAll();
+    const idx = all2.findIndex(x=>x.id===item.id);
+    if(idx>-1) all2[idx] = item; else all2.push(item);
+    saveAll(all2);
+    document.getElementById('modal').style.display = 'none';
+    renderAll();
+    alert('Odločitev shranjena in predlog premaknjen v arhiv.');
+  }, {once:true});
+}
+
+// generate decision text
+function generateDecisionText(item){
+  const lines = [];
+  lines.push(`Štev. predloga: ${item.id}`);
+  lines.push(`Predlog o: ${item.predlog_o}`);
+  lines.push(`Dodeljen: ${item.dodeljen}`);
+  lines.push(`Razlog: ${item.razlog}`);
+  lines.push(`DOLOČILO: ${item.dolocilo}`);
+  lines.push(`Podpis: ${item.podpis}`);
+  lines.push(`Datum: ${new Date().toLocaleString('sl-SI')}`);
+  return lines.join('\n\n');
+}
+
+// generate pdf using jsPDF
+async function generatePdf(item, decisionText){
+  // use jsPDF from global
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(12);
+  doc.text('ODLOČBA / PREDLOG', 14, 18);
+  doc.setFontSize(10);
+  const left = 14; let y = 30;
+  const addWrapped = (label, text)=>{
+    doc.setFont(undefined,'bold'); doc.text(label, left, y); y+=6;
+    doc.setFont(undefined,'normal');
+    const split = doc.splitTextToSize(text, 180);
+    doc.text(split, left, y);
+    y += split.length*6 + 6;
+  }
+  addWrapped('ŠTEVILKA PREDLOGA:', `#${item.id}`);
+  addWrapped('PREDLOG O:', item.predlog_o);
+  addWrapped('DODELJEN:', item.dodeljen);
+  addWrapped('RAZLOG:', item.razlog);
+  addWrapped('DOLOČILO:', item.dolocilo);
+  addWrapped('PODPIS:', item.podpis);
+  addWrapped('DATUM:', new Date().toLocaleString('sl-SI'));
+  // optionally add decision text block
+  doc.setFontSize(9);
+  doc.setTextColor(80);
+  doc.text('\n\n---\nBesedilo odločbe:', left, y+2);
+  const splitDecision = doc.splitTextToSize(decisionText, 180);
+  doc.text(splitDecision, left, y+10);
+
+  const dataUrl = doc.output('datauristring');
+  return dataUrl;
+}
+
+// download
+window.downloadPdf = function(id){
+  const all = loadAll();
+  const item = all.find(x=>x.id===id);
+  if(!item || !item.pdf) return alert('PDF ni na voljo.');
+  // open in new tab
+  const a = document.createElement('a');
+  a.href = item.pdf;
+  a.download = `predlog_${item.id}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// helpers
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;" })[c]); }
+function nl2br(s){ return s.replace(/\n/g,'<br>'); }
+
+// initial render
+renderAll();
+
+</script>
+</body>
+</html>
